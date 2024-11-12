@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、栈溢出原理&ensp;&ensp;&ensp;&ensp;什么是栈溢出？栈溢出就是缓冲区溢出的一种。 由于缓冲区溢出而使得有用的存储单元被改写,往往会引发不可预料的后果。程序在运行过程中，为了临时存取数据的需要，一般都要分配一些内存空间，通常称这些空间为缓冲区。如果向缓冲区中写入超过其本身长度的数据，以致于缓冲区无法容纳，就会造成缓冲区以外的存储单元被改写，这种现象就称为缓冲区溢出。缓冲区长度">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PWN学习总结">
+<meta property="og:url" content="https://windy-purple.github.io/2021/12/26/03/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、栈溢出原理&ensp;&ensp;&ensp;&ensp;什么是栈溢出？栈溢出就是缓冲区溢出的一种。 由于缓冲区溢出而使得有用的存储单元被改写,往往会引发不可预料的后果。程序在运行过程中，为了临时存取数据的需要，一般都要分配一些内存空间，通常称这些空间为缓冲区。如果向缓冲区中写入超过其本身长度的数据，以致于缓冲区无法容纳，就会造成缓冲区以外的存储单元被改写，这种现象就称为缓冲区溢出。缓冲区长度">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/1.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/1.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/3.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/4.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/5.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/6.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/7.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/8.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/9.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/10.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/11.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/14.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/12.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/13.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/23.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/15.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/16.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/17.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/18.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/19.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/21.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/20.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/22.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/25.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/24.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/26.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/27.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/28.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/29.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/30.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/31.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/32.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/33.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/34.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/35.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/36.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/37.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/38.png">
+<meta property="article:published_time" content="2021-12-26T15:02:03.000Z">
+<meta property="article:modified_time" content="2024-11-12T15:10:17.612Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2021/12/26/03/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>PWN学习总结 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2021/12/26/03/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          PWN学习总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-26 23:02:03" itemprop="dateCreated datePublished" datetime="2021-12-26T23:02:03+08:00">2021-12-26</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 23:10:17" itemprop="dateModified" datetime="2024-11-12T23:10:17+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>14 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="一、栈溢出原理"><a href="#一、栈溢出原理" class="headerlink" title="一、栈溢出原理"></a>一、栈溢出原理</h1><p>&ensp;&ensp;&ensp;&ensp;<strong>什么是栈溢出？栈溢出就是缓冲区溢出的一种。 由于缓冲区溢出而使得有用的存储单元被改写,往往会引发不可预料的后果。程序在运行过程中，为了临时存取数据的需要，一般都要分配一些内存空间，通常称这些空间为缓冲区。如果向缓冲区中写入超过其本身长度的数据，以致于缓冲区无法容纳，就会造成缓冲区以外的存储单元被改写，这种现象就称为缓冲区溢出。缓冲区长度一般与用户自己定义的缓冲变量的类型有关。(PS:摘自百度百科)</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>简单来说，就是程序没有检查用户输入的数据长度，导致攻击者覆盖栈上不是程序希望写入的地方，比如说返回地址。(PS:本人是这么理解的，如有问题，还请斧正)</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>在x86中，对于调用一个函数，栈的变化如下：首先，将被调用的函数的参数从右到左依次压入栈中，然后将被调用的函数的返回地址压入栈中，然后跳转到被调用函数的地址去，在被调用的函数中，首先将<code>ebp</code>(这时的<code>ebp</code>是调用者的<code>ebp</code>)压入栈中，最后，将此时的栈顶<code>esp</code>赋值给<code>ebp</code>寄存器(此时的<code>ebp</code>便是被调用函数的栈底了)</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>以一个实际程序为例，源码如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/1.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>对于进入<code>test</code>函数后，栈的变化情况如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/1.jpg">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>接着利用gdb调试验证栈的情况如上图所示，首先在<code>test</code>函数处打下断点，然后<code>start</code>命令将程序运行到<code>main</code>函数开头处，查看一下此时的<code>ebp</code>寄存器的值和<code>call test</code>指令后下一条指令的地址，这里可以看到此时<code>ebp</code>寄存器的值为<code>0xffffd1d8</code>，<code>call test</code>指令后的下一条指令地址为<code>0x565561f2</code>，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/2.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/3.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/4.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>然后运行<code>r</code>命令，进入<code>test</code>函数内部，使用<code>x</code>命令查看此时的栈情况，可以发现栈的情况如上图示意图一样，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/5.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/6.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>在<code>test</code>函数内部，有个<code>ver</code>字符数组，在上面的源码中，我们对其进行了手动赋值，假如该数组通过<code>strcpy</code>等函数完成赋值，并且赋值的字符串由用户输入，那么在用户输入的字符串超过<code>12</code>个字节大小之后，<code>ver</code>数组就会接着往高地址增长，在这其中，可以覆盖掉<code>test</code>函数的返回地址、<code>main</code>函数的<code>ebp</code>等等，这就是栈溢出漏洞。下面来看一个具体的程序实例，有漏洞的程序源码如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/7.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>从源码中可以看到，程序对用户的输入无限制，并且<code>strcpy</code>函数拷贝也无限制，就造成了栈溢出漏洞，下面使用gdb确定偏移地址和<code>getshell</code>函数的首地址，首先断点打在<code>call strcpy</code>的前一行，查看此时的<code>buf</code>数组的地址，也就是<code>eax</code>寄存器的值，再看<code>ebp</code>寄存器的值，发现其两者相距<code>0x10</code>个字节，加上<code>ebp</code> 4个字节，也就是<code>0x14</code>个字节即可到达返回地址，再利用命令<code>disassemble getshell</code>查看<code>getshell</code>函数的首地址，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/8.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/9.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>有了偏移量和<code>getshell</code>函数地址就可以写<code>exp</code>了，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/10.png"></p>
+<hr>
+<h1 id="二、ret2shellcode"><a href="#二、ret2shellcode" class="headerlink" title="二、ret2shellcode"></a>二、ret2shellcode</h1><p>&ensp;&ensp;&ensp;&ensp;<strong><code>ret2shellcode</code>就是直接部署一段<code>shellcode</code>到栈上或者内存其他位置，当然，要使用的前提是，部署的<code>shellcode</code>所在的位置要具有执行权限，要关闭地址随机化，下面以一道ctf题为例，题目来自<code>ctfhub</code>，首先下载好题目，丢到ida里面反编译一下，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/11.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>可以看到，<code>read</code>函数允许输入的大小为<code>0x400</code>，远大于<code>buf</code>数组的长度，这就造成了栈溢出，并且距离<code>ebp</code>偏移距离为<code>0x10</code>。利用<code>checksec</code>检查一下程序，啥保护都没开，利用<code>file</code>查看一下，是<code>64位</code>的，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/14.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>有了偏移量，并且题目输出给出了<code>buf</code>数组的地址，那么就可以写<code>exp</code>了，首先外面用<code>socat</code>将程序发布到某个端口上去，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/12.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>最后执行<code>exp</code>即可，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/13.png">  </p>
+<hr>
+<h1 id="三、Rop"><a href="#三、Rop" class="headerlink" title="三、Rop"></a>三、Rop</h1><p>&ensp;&ensp;&ensp;&ensp;<strong><code>ROP</code>的全称是<code>Return Oriented Programming</code>，简单来说就是修改返回地址，指向内存中的指令片段，也就是<code>gadget</code>，通过<code>ret</code>指令将程序的控制器拿在手里。例如一个存在栈溢出的程序，再将返回地址覆盖为<code>pop eax;ret</code>指令地址后，会将返回地址后的4个字节弹到<code>eax</code>寄存器中，然后<code>esp+4</code>，之后又将栈上4个字节弹到<code>eip</code>寄存器中去，而攻击者要做的就是给栈上返回地址后面覆盖要赋给<code>eax</code>的值，下一条<code>gadget</code>的地址，通过这种方式就组合成了一条<code>rop</code>攻击链，栈情况如下图所示(PS：下面图片来自<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/25892385">https://zhuanlan.zhihu.com/p/25892385</a>文章中)：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/23.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>下面以一道ctf题为例(PS:题目来自<code>ctfwiki</code>)，首先下载好题目，然后查看一下常规信息，可以发现为<code>x86</code>架构，开启了<code>NX</code>，也就是说无法在栈上执行<code>shellcode</code>，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/15.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>丢到<code>IDA</code>里面去反编译一下，可以发现是<code>gets</code>函数引起的栈溢出漏洞，并且没有直接可以<code>getshell</code>的函数，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/16.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>那么可以考虑利用<code>rop</code>来<code>getshell</code>，这是一个32为的程序，我们可以通过系统调用来获取<code>shell</code>，常规的执行命令函数的系统调用汇编代码如下图所示：</strong>  </p>
+<pre><code>mov eax, 0xb  
+mov ebx, &quot;/bin/sh&quot;  
+mov ecx, 0  
+mov edx, 0  
+int 80  
+</code></pre>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>要给<code>eax</code>赋值，那么我们寻找<code>pop eax;ret</code>之类的代码片段，之所以要有<code>ret</code>指令，是为了要把程序的控制权拿在手中，给其他寄存器赋值也类似，接下来利用<code>ROPgadget</code>工具来寻找相应的代码片段，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/17.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/18.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>在这里，我们在寻找控制<code>ecx</code>寄存器的代码片段中，发现可以同时控制<code>ebx</code>、<code>ecx</code>以及<code>edx</code>的一条指令，使用它即可(在图中地址为<code>0x806eb90</code>)，接下来，我们需要<code>/bin/sh</code>字符串的地址，打开<code>IDA</code>，键入<code>shift+F12</code>，发现了<code>/bin/sh</code>字符串的地址，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/19.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>当然，我们还需要最重要的偏移量数据，使用<code>gdb</code>调试程序，将断点打在调用<code>gets</code>函数处，然后<code>r</code>，查看当前<code>eax</code>与<code>ebp</code>的距离为<code>0x68</code>(PS:此时<code>eax</code>存放着<code>v4</code>数组的首地址)，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/21.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>所有我们编写<code>exp</code>的数据都有了，接下来使用<code>socat</code>将程序发布到某个端口上去，然后执行<code>exp</code>即可，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/20.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/22.png">  </p>
+<hr>
+<h1 id="四、ret2libc"><a href="#四、ret2libc" class="headerlink" title="四、ret2libc"></a>四、ret2libc</h1><p>&ensp;&ensp;&ensp;&ensp;<strong><code>ret2libc</code>从名字上来看，就是通过覆盖返回地址为<code>libc</code>库中的函数来<code>getshell</code>的一种技术，通常来说，我们会选择<code>system</code>等函数来<code>getshell</code>，但是一般无法获取到这些函数在内存中的绝对地址的，这就需要通过<code>got</code>和<code>plt</code>表泄露以经加载的函数在内存中的地址然后减去其偏移地址，从而拿到<code>libc</code>库的基地址，然后加上<code>system</code>等函数的偏移地址，从而得到<code>system</code>等函数在内存中的地址。</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong><code>plt</code>表和<code>got</code>表是保存程序动态链接的函数地址，程序通过查询<code>plt</code>表获取函数在<code>got</code>表中保存的位置，<code>plt</code>表就相当于一个索引数组，指向<code>got</code>表，程序获取到<code>plt</code>表中相关位置之后，然后查询<code>got</code>表获取到函数地址，之后跳转到该地址去。下面以一道ctf题为例，题目来自<code>ctfwiki</code>，如下所示：</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>首先还是老一套，查看一下程序信息，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/25.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>可以发现，程序是32位的，并且开启了堆栈不可执行保护，也就是说不可以将<code>shellcode</code>写入栈上执行。再将程序拖进IDA里面看一下，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/24.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>可以看到，溢出点在<code>gets</code>函数，下面用<code>gdb</code>调试一下寻找到偏移量，首先断点下载<code>gets</code>函数，然后查看此时<code>eax</code>与<code>ebp</code>的距离，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/26.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>可以看到，此时<code>eax</code>距离<code>ebp</code>一共为<code>108</code>个字节，再加上这是32位程序，<code>ebp</code>本身占4个字节，也就是说，填充<code>108 + 4 = 112</code>字节后，便是返回地址，找到返回地址后，便是找到<code>system</code>函数地址</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>这里通过访问<code>got</code>表来拿到一个已经运行过的函数在内存中的地址，在linux中，如果一个函数被调用运行过，那么它的真实地址就会被写进<code>got</code>表中，我们可以通过打印函数将其打印出来，获取其地址，之后通过该地址的后三位(PS:之所以找后三位，是因为即使开启了<code>aslr</code>也不会影响低12位的地址)来确定<code>libc</code>的版本(PS:可以通过在线网站<a target="_blank" rel="noopener" href="https://libc.blukat.me/">https://libc.blukat.me/</a>来查询)，从而获取该版本的<code>libc</code>库中函数的偏移地址，最后<code>泄露地址 - 偏移地址</code>即可得到<code>libc</code>的基地址。然后<code>libc基地址 + 该版本libc库中system偏移地址</code>即可得到<code>system</code>函数在内存中的地址，同理，<code>/bin/sh</code>字符串也是一样的，此处选用的泄露函数地址的函数为<code>puts</code>函数，将程序利用<code>socat</code>发布后，最后<code>exp</code>结果如下图所示(PS:程序最好运行在ubuntu上，经过实际测试，kali上失败，下同)：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/27.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/28.png"></p>
+<hr>
+<h1 id="五、格式化字符串"><a href="#五、格式化字符串" class="headerlink" title="五、格式化字符串"></a>五、格式化字符串</h1><p>&ensp;&ensp;&ensp;&ensp;<strong>格式化字符串漏洞，个人理解就是格式字符串参数与其余参数的个数不匹配造成的，网上将原理的文章一大堆，这里就不在重复了。</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>对于格式化字符串漏洞，可以做到读取任意地址的值，也可以往任意地址写入任意值。</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>对于利用格式化字符串漏洞读取任意地址的值，首先需要确定偏移量，此处的偏移量不是值上面栈溢出的偏移量，而是格式化字符串函数参数的地址相对于格式化字符串参数的偏移量，确定偏移量可以利用形如<code>AAAA%n$x</code>(PS:里面的<code>n</code>就是偏移量)的格式化字符串参数来确定，或者利用<code>AAAA%x%x%x%x%x%x%x%x...</code>(PS:这里也可以使用<code>%p</code>来，但为了防止读到不可读的地址导致程序崩溃，还是推荐使用<code>%x</code>来读取)这种形式来确定，确定的偏移量之后，即可通过<code>addr%n$x</code>来读取任意地址的值(PS:这里的<code>addr</code>指要读取的地址，<code>n</code>为偏移量，当然<code>addr</code>也可以写在后面，把<code>n</code>加<code>1</code>即可，因为<code>%n$x</code>是第一个参数，<code>addr</code>自然是第二个参数，所以<code>n</code>要加上<code>1</code>)</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>对于利用格式化字符串漏洞往任意地址写入值，也是需要先确定偏移量，方法和上面一样，写主要利用<code>%n</code>，<code>%n</code>作用为将前面所写字节数写入指定地址，我们可以利用形如<code>addr%kc%n$n</code>这种形式写入，其中<code>addr</code>为要写入的地址，<code>k</code>为要写入的大小(PS:这里需要减去<code>addr</code>所占用的字节数)，<code>n</code>为偏移量，<code>$n</code>表示写入四个字节，当然，也可以使用<code>$hn</code>写入双字节，可以使用<code>$hhn</code>写入一个字节，当然，确定好偏移量之后，最简单的方法是使用<code>pwntools</code>提供的函数即可</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>下面以一道ctf题举例，题目来自<code>ctfwik</code>，首先下载好题目，解压后，丢到<code>kali</code>里面去，看一下常规信息,可以发现，该程序为<code>32位</code>，开了<code>NX</code>等，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/29.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>丢到<code>IDA</code>中反编译一下，可以发现程序实现了类似<code>ftp</code>的功能，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/30.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>首先程序调用了<code>ask_usename</code>和<code>ask_password</code>两个函数获取一个密码，密码就是将<code>sysbdmin</code>字符串加一，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/31.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/32.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>然后程序获取命令，命令有<code>get</code>、<code>put</code>、<code>dir</code>三个命令，获取命令之后，便执行相应的功能，首先来看一下<code>put</code>对应的功能函数，该函数首先要求用户输入一个字符串作为文件名，然后要求用户再输入一个字符串作为文件内容，该函数没什么漏洞，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/33.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>接下来再看一下<code>dir</code>对应的功能函数，该函数作用就是将所有文件名打印出来，也没有什么漏洞，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/34.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>最后来看一下<code>get</code>对应的功能函数，该函数首先要求用户输入文件名，然后将文件名对应的内容拷贝到一个数组中去，最后直接将该数组作为参数传入到<code>printf</code>函数中去，典型的格式化字符串漏洞，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/35.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>通过以上的代码分析，解决该ctf的思路已经很明显了，我们可以首先利用<code>put</code>建立一个文件，将<code>payload</code>写入到该文件中去，之后调用<code>get</code>指令读取该文件，触发格式化字符串漏洞。首先我们先确定偏移量，这里使用<code>BBBB%x....</code>来确定，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/36.png">  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>我们可以通过上图发现，偏移量为<code>7</code>，那么怎么<code>getshell</code>喃，我们可以通过修改<code>got</code>表来实现，将<code>dir</code>指令对应的功能函数中的<code>puts</code>函数修改为<code>system</code>函数的地址，这样调用<code>dir</code>指令后，里面的<code>puts</code>函数实际上会指向<code>system</code>函数，我们通过提前新建一个名为<code>/bon/sh;</code>的文件，即可解决参数的问题，这里怎么写前面<code>ret2libc</code>已经讲了，不在重复，最后使用<code>socat</code>发布程序，指向<code>exp</code>即可，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/37.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//pwn_study_summary/38.png"></p>
+<hr>
+<h1 id="六、参考链接"><a href="#六、参考链接" class="headerlink" title="六、参考链接"></a>六、参考链接</h1><p>&ensp;&ensp;<strong><code>exp</code>脚本和题目<code>github</code>链接:<a target="_blank" rel="noopener" href="https://github.com/windy-purple/pwn_study_summary">https://github.com/windy-purple/pwn_study_summary</a></strong>  </p>
+<p>&ensp;&ensp;<strong>参考链接：</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.cnblogs.com/ichunqiu/p/11122229.html">https://www.cnblogs.com/ichunqiu/p/11122229.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.cnblogs.com/ichunqiu/p/11156155.html">https://www.cnblogs.com/ichunqiu/p/11156155.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.cnblogs.com/ichunqiu/p/11162515.html">https://www.cnblogs.com/ichunqiu/p/11162515.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="http://drops.xmd5.com/static/drops/tips-4225.html">http://drops.xmd5.com/static/drops/tips-4225.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://blog.csdn.net/xiaoi123/article/details/80899155">https://blog.csdn.net/xiaoi123/article/details/80899155</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://bbs.pediy.com/thread-230148.htm">https://bbs.pediy.com/thread-230148.htm</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://sploitfun.wordpress.com/2015/">https://sploitfun.wordpress.com/2015/</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/187b810e78d2">https://www.jianshu.com/p/187b810e78d2</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/25816426">https://zhuanlan.zhihu.com/p/25816426</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.cnblogs.com/Donoy/p/5690402.html">https://www.cnblogs.com/Donoy/p/5690402.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="http://shell-storm.org/shellcode/">http://shell-storm.org/shellcode/</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://bbs.pediy.com/thread-259723.htm">https://bbs.pediy.com/thread-259723.htm</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/25892385">https://zhuanlan.zhihu.com/p/25892385</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="http://events.jianshu.io/p/9214e84139eb">http://events.jianshu.io/p/9214e84139eb</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.cnblogs.com/wulitaotao/p/13909451.html">https://www.cnblogs.com/wulitaotao/p/13909451.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.cnblogs.com/hktk1643/p/15218090.html">https://www.cnblogs.com/hktk1643/p/15218090.html</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/367387964">https://zhuanlan.zhihu.com/p/367387964</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://blog.csdn.net/xiaoi123/article/details/80985646">https://blog.csdn.net/xiaoi123/article/details/80985646</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://ctf-wiki.org/pwn/windows/readme/">https://ctf-wiki.org/pwn/windows/readme/</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://libc.blukat.me/">https://libc.blukat.me/</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_41918771/article/details/90665950">https://blog.csdn.net/qq_41918771&#x2F;article&#x2F;details&#x2F;90665950</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://bbs.pediy.com/thread-253638.htm">https://bbs.pediy.com/thread-253638.htm</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.anquanke.com/post/id/83835">https://www.anquanke.com/post/id/83835</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://bbs.pediy.com/thread-254869.htm">https://bbs.pediy.com/thread-254869.htm</a>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://bbs.pediy.com/thread-262816.htm">https://bbs.pediy.com/thread-262816.htm</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/linux/" rel="tag"># linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/11/22/02/" rel="prev" title="CVE-2020-3580漏洞复现">
+      <i class="fa fa-chevron-left"></i> CVE-2020-3580漏洞复现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/01/20/49/" rel="next" title="XCTF pwn新手区解题记录">
+      XCTF pwn新手区解题记录 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%A0%88%E6%BA%A2%E5%87%BA%E5%8E%9F%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">一、栈溢出原理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81ret2shellcode"><span class="nav-number">2.</span> <span class="nav-text">二、ret2shellcode</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81Rop"><span class="nav-number">3.</span> <span class="nav-text">三、Rop</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9B%E3%80%81ret2libc"><span class="nav-number">4.</span> <span class="nav-text">四、ret2libc</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2"><span class="nav-number">5.</span> <span class="nav-text">五、格式化字符串</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="nav-number">6.</span> <span class="nav-text">六、参考链接</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

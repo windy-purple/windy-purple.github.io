@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="##一、题目来源 &ensp;&ensp;&ensp;&ensp;题目来源：XCTF app3题目    ##二、解题过程 &ensp;&ensp;&ensp;&ensp;1、下载好题目，下载完后发现是.ab后缀名的文件，如下图所示：      &ensp;&ensp;&ensp;&ensp;2、什么是.ab文件？.ab后缀名的文件是Android系统的备份文件格式，它分为加密和未加密两种类型，.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="日常破解--从XCTF的app3题目简单了解安卓备份文件以及sqliteCipher加密数据库">
+<meta property="og:url" content="https://windy-purple.github.io/2019/12/30/24/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="##一、题目来源 &ensp;&ensp;&ensp;&ensp;题目来源：XCTF app3题目    ##二、解题过程 &ensp;&ensp;&ensp;&ensp;1、下载好题目，下载完后发现是.ab后缀名的文件，如下图所示：      &ensp;&ensp;&ensp;&ensp;2、什么是.ab文件？.ab后缀名的文件是Android系统的备份文件格式，它分为加密和未加密两种类型，.">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/16.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/12.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/13.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/14.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/15.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/8.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/9.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/16.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/4.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/10.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/11.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/2.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/3.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/7.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/5.PNG">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/1.jpg">
+<meta property="article:published_time" content="2019-12-30T04:55:24.000Z">
+<meta property="article:modified_time" content="2024-11-12T14:49:48.769Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="Android逆向">
+<meta property="article:tag" content="CTF">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/16.jpg">
+
+<link rel="canonical" href="https://windy-purple.github.io/2019/12/30/24/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>日常破解--从XCTF的app3题目简单了解安卓备份文件以及sqliteCipher加密数据库 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2019/12/30/24/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          日常破解--从XCTF的app3题目简单了解安卓备份文件以及sqliteCipher加密数据库
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-12-30 12:55:24" itemprop="dateCreated datePublished" datetime="2019-12-30T12:55:24+08:00">2019-12-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 22:49:48" itemprop="dateModified" datetime="2024-11-12T22:49:48+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>##一、题目来源</p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;题目来源：XCTF app3题目</strong>  </p>
+<hr>
+<p>##二、解题过程</p>
+<p>&ensp;&ensp;&ensp;&ensp;<strong>1、下载好题目，下载完后发现是.ab后缀名的文件，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/16.jpg">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、什么是.ab文件？.ab后缀名的文件是Android系统的备份文件格式，它分为加密和未加密两种类型，.ab文件的前24个字节是类似文件头的东西，如果是加密的，在前24个字节中会有AES-256的标志，如果未加密，则在前24个字节中会有none的标志，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/12.jpg">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;3、怎么获取.ab文件中的数据？在github上有个开源项目<code>Android backup extractor</code>可以将.ab文件转换为.tar文件，然后用解压软件打开即可！！！项目地址：<a target="_blank" rel="noopener" href="https://github.com/nelenkov/android-backup-extractor">https://github.com/nelenkov/android-backup-extractor</a></strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/13.PNG">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;4、使用ade.jar将1.ab文件转为tar文件解压发现有一个apk文件和两个sqlite数据库文件，将apk安装到夜神中，发现没什么有用的东西，去查看数据库，直接使用sqlitebrowser打开，提示需要密码，看来数据库多半被加密了，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/14.PNG">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/15.PNG">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/8.PNG">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/9.PNG">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/16.PNG">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;5、直接使用AndroidKiller和jeb将该APK反编译，发现了存在<code>asset</code>目录和<code>libs</code>目录，并且这两个目录下存放了和<code>sqlitecipher</code>相关的文件，可以推断数据库被sqlitecipher加密了，再搜索一下在夜神里点击登陆后弹出的信息Wait ….，发现该信息在AnotherActivity.java文件中，转为java后，发现没什么有用的信息。。。</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/4.jpg">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/10.PNG">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;6、于是打开MainActivity.java文件，果然发现了一个函数<code>a()</code>，代码如下：</strong>  </p>
+<pre><code>private void a() &#123;
+    SQLiteDatabase.loadLibs(((Context)this));
+    this.b = new a(((Context)this), &quot;Demo.db&quot;, null, 1);
+    ContentValues v0 = new ContentValues();
+    v0.put(&quot;name&quot;, &quot;Stranger&quot;);
+    v0.put(&quot;password&quot;, Integer.valueOf(123456));
+    com.example.yaphetshan.tencentwelcome.a.a v1 = new com.example.yaphetshan.tencentwelcome.a.a();
+    String v2 = v1.a(v0.getAsString(&quot;name&quot;), v0.getAsString(&quot;password&quot;));
+    this.a = this.b.getWritableDatabase(v1.a(v2 + v1.b(v2, v0.getAsString(&quot;password&quot;))).substring(0, 7));
+    this.a.insert(&quot;TencentMicrMsg&quot;, null, v0);
+&#125;
+</code></pre>
+<ul>
+<li>第一行<code>SQLiteDatabase.loadLibs(((Context)this));</code>将所需要的sqlitecipher库文件加载进来。</li>
+<li>第二行实例化一个sqlitehelper类。</li>
+<li>第三、四、五行实例化了一个ContentValues类并将键值对<code>name:Stranger</code>、<code>password:123456</code>放入其中。</li>
+<li>第六行实例化了一个<code>com.example.yaphetshan.tencentwelcome.a.a</code>类。</li>
+<li>第七行获取了v2变量的值。</li>
+<li>第八行调用了<code>getWritableDatabase</code>函数，传进去的字符串参数即是数据库解密的密钥。</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;7、现在目标已经很明确了，就是获取数据库解密密钥（猜一下flag就藏在加密的sqlite数据库中），而该密钥由<code>com.example.yaphetshan.tencentwelcome.a.a</code>里面的方法生成，而这个类又调用了b.java里面的方法，如图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/11.PNG">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/2.PNG">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/3.PNG">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;8、a、b类里面生成密钥的算法涉及到了sha-1、md5等算法，没必要去重新写一编，搞清楚密钥生成逻辑然后把b类里面的两个函数复制出来调用即可生成密钥，简单分析一下密钥生成逻辑：首先得到变量v2,v2调用了a类中的<code>a(String,String)</code>方法获取,该方法返回第一个参数前四个字符加第二个参数的前四个字符，而调用该方法传进去的参数为<code>(Stranger,123456)</code>，所以<code>v2 = Stra1234</code>，密钥为<code>v1.a(String).sunstring()</code>（调用v1.a()方法然后将返回值截取前7位作为密钥），关键就在传进去的这个字符串，可以看到这个字符串是<code>v2 + v1.b(v2,&#39;123456&#39;)</code>，而<code>v1.b(String,String)</code>这个函数将调用了b类的<code>a(String)</code>函数，传进去的参数是变量<code>v2</code>，获取到返回值后，我们就可以得到这个字符串，然后调用<code>v1.a(String)</code>函数得到密钥，这个函数将传进去的字符串加上<code>yaphetshan</code>字符串作为参数调用b类的b方法，其返回值取前7位即是密钥，写了一个java获取密钥的代码，运行结果如下（ps:代码粘贴在文末中）：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/7.jpg">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/5.PNG">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;9、获取到密钥后，使用sqlitebrowser打开加密数据库，发现了一串Base64的字符串，解码得到了flag</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//xctf_app3/1.jpg"> </p>
+<hr>
+<p>##三、总结</p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;刚下载下来题目发现一看后缀名就慌了，重来没见过的文件了，百度了n久，终于弄懂了android备份文件和ssqlitecipher这两个东西。</strong><br><strong>&ensp;&ensp;&ensp;&ensp;给大家分享一下有关这两个东西的知识点我觉得写的比较好的博客！！！</strong></p>
+<ul>
+<li>Android备份文件：<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_33356474/article/details/92188491">https://blog.csdn.net/qq_33356474&#x2F;article&#x2F;details&#x2F;92188491</a></li>
+<li>SqliteCipher：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/android100/p/Android-SQLCipher.html">https://www.cnblogs.com/android100/p/Android-SQLCipher.html</a></li>
+</ul>
+<hr>
+<p>##四、附件</p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;题目以及所用到的工具：百度网盘链接<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1Wam_Hjg8rNlpqywVqqASpQ">https://pan.baidu.com/s/1Wam_Hjg8rNlpqywVqqASpQ</a>，密码<code>0y89</code></strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;获取密钥java代码如下：</strong>  </p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.security.MessageDigest;</span><br><span class="line"><span class="keyword">import</span> java.util.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">b</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">b</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">super</span>();</span><br><span class="line">    &#125;</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="type">String</span> <span class="variable">varV2</span> <span class="operator">=</span> <span class="string">&quot;Stra1234&quot;</span>;</span><br><span class="line">		<span class="type">String</span> <span class="variable">varV1B</span> <span class="operator">=</span> a(varV2);</span><br><span class="line">		<span class="type">String</span> <span class="variable">varKey</span> <span class="operator">=</span> varV2 + varV1B + <span class="string">&quot;yaphetshan&quot;</span>;</span><br><span class="line">		System.out.print(<span class="string">&quot;KEY = &quot;</span>);</span><br><span class="line">		System.out.print(b(varKey).substring(<span class="number">0</span>,<span class="number">7</span>));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String <span class="title function_">a</span><span class="params">(String arg9)</span> &#123;</span><br><span class="line">        String v0_2;</span><br><span class="line">        <span class="type">int</span> <span class="variable">v0</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">        <span class="type">char</span>[] v2 = <span class="keyword">new</span> <span class="title class_">char</span>[]&#123;<span class="string">&#x27;0&#x27;</span>, <span class="string">&#x27;1&#x27;</span>, <span class="string">&#x27;2&#x27;</span>, <span class="string">&#x27;3&#x27;</span>, <span class="string">&#x27;4&#x27;</span>, <span class="string">&#x27;5&#x27;</span>, <span class="string">&#x27;6&#x27;</span>, <span class="string">&#x27;7&#x27;</span>, <span class="string">&#x27;8&#x27;</span>, <span class="string">&#x27;9&#x27;</span>, <span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;b&#x27;</span>, <span class="string">&#x27;c&#x27;</span>, <span class="string">&#x27;d&#x27;</span>, <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;f&#x27;</span>&#125;;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">byte</span>[] v1 = arg9.getBytes();</span><br><span class="line">            <span class="type">MessageDigest</span> <span class="variable">v3</span> <span class="operator">=</span> MessageDigest.getInstance(<span class="string">&quot;MD5&quot;</span>);</span><br><span class="line">            v3.update(v1);</span><br><span class="line">            <span class="type">byte</span>[] v3_1 = v3.digest();</span><br><span class="line">            <span class="type">int</span> <span class="variable">v4</span> <span class="operator">=</span> v3_1.length;</span><br><span class="line">            <span class="type">char</span>[] v5 = <span class="keyword">new</span> <span class="title class_">char</span>[v4 * <span class="number">2</span>];</span><br><span class="line">            <span class="type">int</span> <span class="variable">v1_1</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">while</span>(v0 &lt; v4) &#123;</span><br><span class="line">                <span class="type">int</span> <span class="variable">v6</span> <span class="operator">=</span> v3_1[v0];</span><br><span class="line">                <span class="type">int</span> <span class="variable">v7</span> <span class="operator">=</span> v1_1 + <span class="number">1</span>;</span><br><span class="line">                v5[v1_1] = v2[v6 &gt;&gt;&gt; <span class="number">4</span> &amp; <span class="number">15</span>];</span><br><span class="line">                v1_1 = v7 + <span class="number">1</span>;</span><br><span class="line">                v5[v7] = v2[v6 &amp; <span class="number">15</span>];</span><br><span class="line">                ++v0;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            v0_2 = <span class="keyword">new</span> <span class="title class_">String</span>(v5);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span>(Exception v0_1) &#123;</span><br><span class="line">            v0_2 = <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> v0_2;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String <span class="title function_">b</span><span class="params">(String arg9)</span> &#123;</span><br><span class="line">        String v0_2;</span><br><span class="line">        <span class="type">int</span> <span class="variable">v0</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">        <span class="type">char</span>[] v2 = <span class="keyword">new</span> <span class="title class_">char</span>[]&#123;<span class="string">&#x27;0&#x27;</span>, <span class="string">&#x27;1&#x27;</span>, <span class="string">&#x27;2&#x27;</span>, <span class="string">&#x27;3&#x27;</span>, <span class="string">&#x27;4&#x27;</span>, <span class="string">&#x27;5&#x27;</span>, <span class="string">&#x27;6&#x27;</span>, <span class="string">&#x27;7&#x27;</span>, <span class="string">&#x27;8&#x27;</span>, <span class="string">&#x27;9&#x27;</span>, <span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;b&#x27;</span>, <span class="string">&#x27;c&#x27;</span>, <span class="string">&#x27;d&#x27;</span>, <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;f&#x27;</span>&#125;;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">byte</span>[] v1 = arg9.getBytes();</span><br><span class="line">            <span class="type">MessageDigest</span> <span class="variable">v3</span> <span class="operator">=</span> MessageDigest.getInstance(<span class="string">&quot;SHA-1&quot;</span>);</span><br><span class="line">            v3.update(v1);</span><br><span class="line">            <span class="type">byte</span>[] v3_1 = v3.digest();</span><br><span class="line">            <span class="type">int</span> <span class="variable">v4</span> <span class="operator">=</span> v3_1.length;</span><br><span class="line">            <span class="type">char</span>[] v5 = <span class="keyword">new</span> <span class="title class_">char</span>[v4 * <span class="number">2</span>];</span><br><span class="line">            <span class="type">int</span> <span class="variable">v1_1</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">while</span>(v0 &lt; v4) &#123;</span><br><span class="line">                <span class="type">int</span> <span class="variable">v6</span> <span class="operator">=</span> v3_1[v0];</span><br><span class="line">                <span class="type">int</span> <span class="variable">v7</span> <span class="operator">=</span> v1_1 + <span class="number">1</span>;</span><br><span class="line">                v5[v1_1] = v2[v6 &gt;&gt;&gt; <span class="number">4</span> &amp; <span class="number">15</span>];</span><br><span class="line">                v1_1 = v7 + <span class="number">1</span>;</span><br><span class="line">                v5[v7] = v2[v6 &amp; <span class="number">15</span>];</span><br><span class="line">                ++v0;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            v0_2 = <span class="keyword">new</span> <span class="title class_">String</span>(v5);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span>(Exception v0_1) &#123;</span><br><span class="line">            v0_2 = <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> v0_2;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+              <a href="/tags/CTF/" rel="tag"># CTF</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/12/08/07/" rel="prev" title="DEX文件解析---2、Dex文件checksum(校验和)解析">
+      <i class="fa fa-chevron-left"></i> DEX文件解析---2、Dex文件checksum(校验和)解析
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/11/48/" rel="next" title="frida入门总结">
+      frida入门总结 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

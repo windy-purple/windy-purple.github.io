@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、前言&ensp;&ensp;&ensp;前两篇文章链接：  &ensp;&ensp;&ensp;&ensp;1、DEX文件头解析  &ensp;&ensp;&ensp;&ensp;2、DEX文件校验和解析     &ensp;&ensp;&ensp;PS：前几天检查文件夹的时候发现DEX文件解析还只写了开头，正好找点事情来做，就去接着解析DEX文件其余部分了。。。。。（还得多亏了一波疫情，不然">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DEX文件解析--3、dex文件字符串解析">
+<meta property="og:url" content="https://windy-purple.github.io/2020/04/04/15/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、前言&ensp;&ensp;&ensp;前两篇文章链接：  &ensp;&ensp;&ensp;&ensp;1、DEX文件头解析  &ensp;&ensp;&ensp;&ensp;2、DEX文件校验和解析     &ensp;&ensp;&ensp;PS：前几天检查文件夹的时候发现DEX文件解析还只写了开头，正好找点事情来做，就去接着解析DEX文件其余部分了。。。。。（还得多亏了一波疫情，不然">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/1.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/3.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/5.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/4.png">
+<meta property="article:published_time" content="2020-04-04T09:06:15.000Z">
+<meta property="article:modified_time" content="2024-11-12T14:47:59.467Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="Android逆向">
+<meta property="article:tag" content="Dex">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2020/04/04/15/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>DEX文件解析--3、dex文件字符串解析 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2020/04/04/15/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DEX文件解析--3、dex文件字符串解析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-04 17:06:15" itemprop="dateCreated datePublished" datetime="2020-04-04T17:06:15+08:00">2020-04-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 22:47:59" itemprop="dateModified" datetime="2024-11-12T22:47:59+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="一、前言"><a href="#一、前言" class="headerlink" title="一、前言"></a>一、前言</h1><p><strong>&ensp;&ensp;&ensp;前两篇文章链接：</strong><br>  <strong>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1057245-1-1.html">1、DEX文件头解析</a></strong><br>  <strong>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1070218-1-1.html">2、DEX文件校验和解析</a></strong>  </p>
+<p>  <strong>&ensp;&ensp;&ensp;PS：前几天检查文件夹的时候发现DEX文件解析还只写了开头，正好找点事情来做，就去接着解析DEX文件其余部分了。。。。。（还得多亏了一波疫情，不然都忘了还有这回事了。。。）</strong>  </p>
+<hr>
+<h1 id="二、DEX文件中的字符串"><a href="#二、DEX文件中的字符串" class="headerlink" title="二、DEX文件中的字符串"></a>二、DEX文件中的字符串</h1><p>  <strong>&ensp;&ensp;&ensp;&ensp;1、DEX文件大致上可以粗略的分为3个部分：文件头、索引区以及数据区。而文件头一般来说占了整个DEX文件0x70个字节（还不了解DEX文件头的可以看一下我前面两篇文章），在文件头中，关于字符串的相关信息一共有8个字节，分别位于0x38(4 Bytes)和0x3c(4 Bytes)处，前者说明了该DEX文件包含了多少个字符串，后者则是字符串索引区的起始地址，但是需要注意的是，DEX存储是以小端序存储的（通俗一点的说就是从后往前读），如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/1.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、前面我们通过文件头知道了字符串数量和字符串索引区起始地址等信息，接下来我们就来具体看一下字符串索引区。字符串索引区存储的是字符串真正存储在数据区的偏移地址，以4个字节为一组，表示一个字符串在数据区的偏移地址，所以索引区一个占<code>字符串数量 X 4</code>个字节那么多，同样的，索引区也采用的是小端序存储，所以我们在读取地址时，需要与小端序的方式来读取真正的地址，如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/2.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;3、从上面我们已经知道了如何找到字符串在数据区的偏移地址，接下来我们需要做的就是解析这些数据区的字节。通过偏移地址我们可以在数据区找到代表字符串的这些字节，在DEX文件中，字符串是通过<code>MUTF-8</code>编码而成的（至于mutf-8是什么编码，我会将一些相关博客链接贴在文末），在<code>MUTF-8</code>编码中，第一个字节代表了这个字符串所需要用到的字节数目（不包括最后一个代表终结的字节），最后一个字节为<code>0x00</code>，表示这个字符串到此结束，跟c语言有点类似，中间部分才是一个字符串的具体内容，如下所示：(PS:<code>mutf-8</code>第一个字节还经过<code>uleb128</code>编码，所以简单的进行进制换算得到的字节数很多人奇怪对不上，由于比较复杂，就不过多解释了，想进一步了解更深的可以去看一下安卓源码中对DEX文件解析出字符串这一部分)</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/3.png">  </p>
+<hr>
+<h1 id="三、解析代码："><a href="#三、解析代码：" class="headerlink" title="三、解析代码："></a>三、解析代码：</h1><p><strong>&ensp;&ensp;&ensp;&ensp;PS：我电脑运行环境–python3.6</strong>  </p>
+<p><strong>代码如下：</strong>  </p>
+<pre><code>import binascii
+import os
+import sys
+
+def getStringsCount(f):
+    f.seek(0x38)
+    stringsId = f.read(4)
+    a = bytearray(stringsId)
+    a.reverse()
+    stringsId = bytes(a)
+    stringsId = str(binascii.b2a_hex(stringsId),encoding=&#39;UTF-8&#39;)
+    count = int(stringsId,16)
+    print(&#39;[+] stringSize ==&gt; &#39; + str(count))
+    return count
+
+def getStringByteArr(f,addr):
+    byteArr = bytearray()
+    f.seek(addr + 1)
+    b = f.read(1)
+    b = str(binascii.b2a_hex(b),encoding=&#39;UTF-8&#39;)
+    b = int(b,16)
+    index = 2
+    while b != 0:
+        byteArr.append(b)
+        f.seek(addr + index)
+        b = f.read(1)
+        b = str(binascii.b2a_hex(b),encoding=&#39;UTF-8&#39;)
+        b = int(b,16)
+        index = index + 1
+    return byteArr
+
+def BytesToString(byteArr):
+    try:
+        bs = bytes(byteArr)
+        stringItem = str(bs,encoding=&#39;UTF-8&#39;)
+        print(&#39;[*] str = &#39; + stringItem)
+        return stringItem
+    except:
+        pass
+
+def getAddress(addr):
+    address = bytearray(addr)
+    address.reverse()
+    address = bytes(address)
+    address = str(binascii.b2a_hex(address),encoding=&#39;UTF-8&#39;)
+    address = int(address,16)
+    return address
+
+def getStrings(f,stringAmount):
+    stringsList = []
+    f.seek(0x3c)
+    stringOff = f.read(4)
+    Off = getAddress(stringOff)
+    f.seek(Off)
+    for i in range(stringAmount):
+        addr = f.read(4)
+        address = getAddress(addr)
+        byteArr = getStringByteArr(f,address)
+        stringItem = BytesToString(byteArr)
+        stringsList.append(stringItem)
+        Off = Off + 4
+        f.seek(Off)
+
+if __name__ == &#39;__main__&#39;:
+    filename = str(os.path.join(sys.path[0])) + &#39;\\1.dex&#39;
+    f = open(filename,&#39;rb&#39;,True)
+    stringsCount = getStringsCount(f)
+    getStrings(f,stringsCount)
+    f.close()
+</code></pre>
+<p><strong>运行截图：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/5.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_string/4.png"></p>
+<hr>
+<h1 id="四、一些总结"><a href="#四、一些总结" class="headerlink" title="四、一些总结"></a>四、一些总结</h1><p><strong>&ensp;&ensp;&ensp;&ensp;其实也没有什么好总结的，因为本身这没有什么难点之处，就记录一些遇见的问题吧！！！最开始解析字符串的时候发现<code>MUTF-8</code>编码的时候好不容易弄懂了的时候，发现还经过<code>uleb128</code>，所以最开始一直没办法通过第一个字节计算出需要编码的字节个数，最后取了个巧，从第二个字节开始读取知道读取到<code>0x00</code>为止；然后是怎么编码这些字节显示字符串，后来看了一下姜维大佬写的解析代码，发现直接用的是<code>utf-8</code>进行编码，转念一想，<code>mutf-8</code>也是<code>utf-8</code>的变种，所以大部分解析出来基本没有问题。写完代码后本来打算去看一下安卓源码是怎么解析这一块的再来模仿一下，但是这疫情让我已经耍了这么久了，实在没精神去看了，我还是接着去微博上蹲在@四川教育吧，看源码什么的还是开学了再说吧！！！</strong>  </p>
+<hr>
+<h1 id="五、一下链接和附件"><a href="#五、一下链接和附件" class="headerlink" title="五、一下链接和附件"></a>五、一下链接和附件</h1><p><strong>&ensp;&ensp;1、相关知识链接：</strong><br><strong>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://blog.csdn.net/Roland_Sun/article/details/46716965">MUTF-8编码:https://blog.csdn.net/Roland_Sun&#x2F;article&#x2F;details&#x2F;46716965</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://blog.csdn.net/Roland_Sun/article/details/46708061">uleb128:https://blog.csdn.net/Roland_Sun&#x2F;article&#x2F;details&#x2F;46708061</a></strong>  </p>
+<p><strong>&ensp;&ensp;2、样本及代码下载链接：</strong><br><strong>&ensp;&ensp;&ensp;&ensp;百度网盘链接：<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1_CQP7Zrj9LHcLOIjdGD95A">https://pan.baidu.com/s/1_CQP7Zrj9LHcLOIjdGD95A</a>；提取码：yc9y</strong>  </p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+              <a href="/tags/Dex/" rel="tag"># Dex</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/28/26/" rel="prev" title="XCTF mobile新手区解题记录以及一些总结和思考">
+      <i class="fa fa-chevron-left"></i> XCTF mobile新手区解题记录以及一些总结和思考
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/04/08/00/" rel="next" title="DEX文件解析--4、dex类的类型解析">
+      DEX文件解析--4、dex类的类型解析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81DEX%E6%96%87%E4%BB%B6%E4%B8%AD%E7%9A%84%E5%AD%97%E7%AC%A6%E4%B8%B2"><span class="nav-number">2.</span> <span class="nav-text">二、DEX文件中的字符串</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E8%A7%A3%E6%9E%90%E4%BB%A3%E7%A0%81%EF%BC%9A"><span class="nav-number">3.</span> <span class="nav-text">三、解析代码：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E4%B8%80%E4%BA%9B%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">四、一些总结</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E4%B8%80%E4%B8%8B%E9%93%BE%E6%8E%A5%E5%92%8C%E9%99%84%E4%BB%B6"><span class="nav-number">5.</span> <span class="nav-text">五、一下链接和附件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

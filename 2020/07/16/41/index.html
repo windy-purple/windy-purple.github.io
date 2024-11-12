@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、前言&ensp;&ensp;&ensp;前置技能链接：&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DEX文件解析—1、dex文件头解析&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DEX文件解析—2、Dex文件checksum(校验和)解析&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DEX文件解析–3、dex文">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DEX文件解析--7、类及其类数据解析(完结篇)">
+<meta property="og:url" content="https://windy-purple.github.io/2020/07/16/41/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、前言&ensp;&ensp;&ensp;前置技能链接：&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DEX文件解析—1、dex文件头解析&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DEX文件解析—2、Dex文件checksum(校验和)解析&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;DEX文件解析–3、dex文">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/1.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/3.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/4.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/5.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/6.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/7.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/8.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/9.png">
+<meta property="article:published_time" content="2020-07-16T05:39:41.000Z">
+<meta property="article:modified_time" content="2024-11-12T14:57:18.861Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="Android逆向">
+<meta property="article:tag" content="Dex">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2020/07/16/41/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>DEX文件解析--7、类及其类数据解析(完结篇) | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2020/07/16/41/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DEX文件解析--7、类及其类数据解析(完结篇)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-07-16 13:39:41" itemprop="dateCreated datePublished" datetime="2020-07-16T13:39:41+08:00">2020-07-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 22:57:18" itemprop="dateModified" datetime="2024-11-12T22:57:18+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>19k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>34 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<h1 id="一、前言"><a href="#一、前言" class="headerlink" title="一、前言"></a>一、前言</h1><p><strong>&ensp;&ensp;&ensp;前置技能链接：</strong><br><strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1057245-1-1.html">DEX文件解析—1、dex文件头解析</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1070218-1-1.html">DEX文件解析—2、Dex文件checksum(校验和)解析</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1148568-1-1.html">DEX文件解析–3、dex文件字符串解析</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1151528-1-1.html">DEX文件解析–4、dex类的类型解析</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1158006-1-1.html">DEX文件解析–5、dex方法原型解析</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1159847-1-1.html">DEX文件解析–6、dex文件字段和方法定义解析</a></strong></p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;PS：Dex文件解析到现在，终于到了最重要也是结构最复杂的部分了，不了解前面的一些必要知识的，可以看我前面几篇文章；这篇文章分析的dex样本来自一个复杂apk的dex文件，但是代码运行时使用的样本是一个在网上找的很简单的dex样本，原因很简单，分析使用的dex涉及的smali指令太多了，大概有200多个，挨个解析起来工作量太大了，有时间我会写一个通用的python解析模块，完成了我会上传到github仓库，有兴趣的完成后可以看一下，用简单的dex只涉及到5个指令，代码写起来就没那么麻烦了！！！(tips:Dex类数据这里解析起来有种俄罗斯套娃的感觉，多看几篇就很容易理解了。)</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;PS:这篇文章及其之前同系列的整合版(只是所有文章汇总在一起的整合版)都发在某公众号上面了，名字就不说了，怕被认为打广告，所以这不是抄袭哦！！！</strong>  </p>
+<hr>
+<h1 id="二、uleb128编码"><a href="#二、uleb128编码" class="headerlink" title="二、uleb128编码"></a>二、uleb128编码</h1><p><strong>&ensp;&ensp;&ensp;&ensp;PS:本来关于uleb128编码网上一大堆，没必要写这个，但是网上的你抄我的我抄你的，能找的的相关资料基本都一样。。。。或者干脆贴个官方代码，官方代码的位运算写的很巧妙，但是直接去看的化，反正我是没看懂到底是怎么解码出来的。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;uleb128编码，是一种可变长度的编码，长度大小为<code>1-5字节</code>，uleb128通过字节的最高位来决定是否用到下一个字节，如果最高位为1，则用到下一个字节，直到某个字节最高位为0或已经读取了5个字节为止，接下来通过一个实例来理解uleb128编码。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;假设有以下经过uleb128编码的数据(都为16进制)–<code>81 80 04</code>，首先来看第一个字节<code>81</code>，他的二进制为<code>10000001</code>，他的最高位为<code>1</code>，则说明还要用到下一个字节，它存放的数据则为<code>0000001</code>；再来看第二个字节<code>80</code>，它的二进制为<code>10000000</code>，它的最高位为<code>1</code>，则说明还需要用到第三个字节，存放的数据为<code>0000000</code>；再来看第三个字节<code>04</code>，它的二进制为<code>00000100</code>，最高位为<code>0</code>,说明一共使用了三个字节，它存放的数据为<code>0000100</code>；通过上面的数据我们已经获取了存放的数据，接下来就是把这些bit组合起来获取解码后的数据，dex文件里面的数据都是采用的小端序的方式，uleb128也不例外，在这三个字节，也不例外，第三个字节<code>04</code>存放的数据<code>0000100</code>作为解码后的数据的<code>高7位</code>，第二个字节<code>80</code>存放的数据<code>0000000</code>作为解码后的数据的<code>中7位</code>，第一个字节<code>81</code>存放的数据<code>0000001</code>作为解码后的数据的<code>低7位</code>；那么解码后的数据二进制则为<code>0000100 0000000 0000001</code>，转换为16进制则为<code>0x10001</code>。其他使用5个字节、4个字节照此类推即可，下面是python读取uleb128的代码(ps:该代码是最终类数据解析代码的一共函数，无法单独运行，仅供参考，采用的是官方提供的位运算算法)：</strong>  </p>
+<pre><code>def readuleb128(f,addr):
+    result = [-1,-1]
+    n = 0
+    f.seek(addr)
+    data = oneByte2Int(f.read(1))
+    if data &gt; 0x7f:
+        f.seek(addr + 1)
+        n = 1
+        tmp = oneByte2Int(f.read(1))
+        data = (data &amp; 0x7f) | ((tmp &amp; 0x7f) &lt;&lt; 7)
+        if tmp &gt; 0x7f:
+            f.seek(addr + 2)
+            n = 2
+            tmp = oneByte2Int(f.read(1))
+            data |= (tmp &amp; 0x7f) &lt;&lt; 14
+            if tmp &gt; 0x7f:
+                f.seek(addr + 3)
+                n = 3
+                tmp = oneByte2Int(f.read(1))
+                data |= (tmp &amp; 0x7f) &lt;&lt; 21
+                if tmp &gt; 0x7f:
+                    f.seek(addr + 4)
+                    n = 4
+                    tmp = oneByte2Int(f.read(1))
+                    data |= tmp &lt;&lt; 28
+    result[0] = data
+    result[1] = addr + n + 1
+    return result
+</code></pre>
+<hr>
+<h1 id="三、类解析第一层结构：class-def-item"><a href="#三、类解析第一层结构：class-def-item" class="headerlink" title="三、类解析第一层结构：class_def_item"></a>三、类解析第一层结构：class_def_item</h1><p><strong>&ensp;&ensp;&ensp;&ensp;1、在dex文件头<code>0x60-0x63</code>这四个字节，指明了<code>class</code>的数量，在<code>0x64-0x67</code>这四个字节，指明的<code>class_def_item</code>的偏移地址。如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/1.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、通过上面的偏移地址，我们可以找到class_def_item的起始地址，class_def_item包含了一个类的类名、接口、父类、所属java文件名等信息。一个class_def_item结构大小为32字节，分别包含8个信息，每个信息大小为4字节(小端序存储)：</strong>  </p>
+<ul>
+<li><code>第1-4字节--class_idx</code>(该值为前面解析出来的类的类型列表的索引，也就是这个类的类名)；  </li>
+<li><code>第5-8字节--access_flags</code>（类的访问标志，也就是这个类是public还是private等，这个通过官方的文档查表得知，具体算法在最后面说明）；  </li>
+<li><code>第9-12字节--superclass_idx</code>（该值也为前面解析出来的类的类型列表的索引，指明了父类的类名）  </li>
+<li><code>第13-16字节--interfaces_off</code>（该值指明了接口信息的偏移地址，所指向的地址结构为typelist，前面的文章有说过，这里不再多说，如果该类没有接口，该值则为0）  </li>
+<li><code>第17-20字节--source_file_idx</code>(该值为dex字符串列表的的索引，指明了该类所在的java文件名)  </li>
+<li><code>第21-24字节--annotations_off</code>（该值为注释信息的偏移地址，由于注释信息不是我要解析的重点，要查看注释信息具体结构的可以参考官方文档，官方文档地址粘贴在文末）  </li>
+<li><code>第25-28字节--class_data_off</code>（该值是这个类数据第二层结构的偏移地址，在该结构中指明了该类的字段和方法）  </li>
+<li><code>第29-32字节--static_value_off</code>（该值也是一个偏移地址，指向了一个结构，不是重点，感兴趣的参考官方文档，如果没相关信息，则该值为0）</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;具体分析过程，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/2.png">  </p>
+<hr>
+<h1 id="四、类解析第二层结构：class-data-item"><a href="#四、类解析第二层结构：class-data-item" class="headerlink" title="四、类解析第二层结构：class_data_item"></a>四、类解析第二层结构：class_data_item</h1><p><strong>&ensp;&ensp;&ensp;&ensp;1、通过上面class_def_item的分析，我们知道了类的基本信息，例如类名、父类等啊，接下来就是要找到类里面的字段和方法这些信息，而这些信息，在class_def_item里面的class_data_off字段给我们指明<code>class_data_item</code>就包含这些信息并给出了偏移地址，即现在需要解析<code>class_data_iem</code>结构获取字段和方法信息。（ps:以下的数据结构不做特别说明都为uleb128编码格式）</strong><br><strong>&ensp;&ensp;&ensp;&ensp;2、<code>class_data_item</code>结构包含以下信息：</strong>  </p>
+<ul>
+<li><code>第一个uleb128编码--static_field_size</code>，指明了该类的静态字段的数量</li>
+<li><code>第二个uleb128编码--instance_field_size</code>，指明了该类的实例字段的数量（实例字段不知道是啥的建议百度）  </li>
+<li><code>第三个uleb128编码--direct_method_size</code>，指明了该类的直接方法的个数</li>
+<li><code>第四个uleb128编码--virtual_method_size</code>，指明了该类的虚方法的个数（虚方法理解不清楚的建议百度一下）  </li>
+<li><code>encoded_field--static_fields</code>，该结构指明了具体的静态字段信息，该结构的存在前提是<code>static_field_size &gt;0 </code>，该结构包含两个uleb128编码，第一个uleb128编码为前面解析出来的字段列表的索引，第二个uleb128编码指明了该字段的访问标志  </li>
+<li><code>encoded_field--instance_fields</code>，跟上面类似，不再多说，值得注意的是，该结构存在的前提是<code>instance_field_size &gt; 0</code>  </li>
+<li><code>encoded_method--direct_methods</code>，该结构指明了直接方法具体信息，该结构存在的前提同样是<code>direct_method_size &gt; 0</code>，该结构包含3个uleb128编码，第一个uleb128为前面文章解析出来的方法原型列表的索引值，第二个uleb128编码为该方法的访问标志，第三个uleb128为code_off，也就是该方法具体代码的字节码的偏移地址，对应的结构为code_item，code_item结构里面包含了该方法内部的代码，这里是字节码，也就是smali(ps:如果该方法为抽象方法，例如native方法，这时code_off对应的值为0，即该方法不存在具体代码)  </li>
+<li><code>encoded_method--virtual_methods</code>，该结构指明了该类的虚方法的具体信息，存在前提为<code>virtual_method_size &gt; 0</code>，具体结构和上面一样，不再多说<br><strong>&ensp;&ensp;&ensp;&ensp;具体分析过程，如下图所示：</strong></li>
+</ul>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/3.png">  </p>
+<hr>
+<h1 id="五、类解析的第三层结构：code-item"><a href="#五、类解析的第三层结构：code-item" class="headerlink" title="五、类解析的第三层结构：code_item"></a>五、类解析的第三层结构：code_item</h1><p><strong>&ensp;&ensp;&ensp;&ensp;1、在上面的class_data_item结构中的<code>encoded_method</code>结构的第三个uleb128编码中，指出了一个类中的方法具体代码的偏移地址，也就是dv虚拟机在执行该方法的具体指令的偏移地址，该值指向的地址结构为<code>code_item</code>，里面包含了寄存器数量、具体指令等信息，下面来分析一下该结构。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、<code>code_item</code>结构包含以下信息:</strong>  </p>
+<ul>
+<li><code>第1-2字节--registers_size</code>，该值指明了该方法使用的寄存器数量，对应的smali语法中的<code>.register</code>的值  </li>
+<li><code>第3-4字节--ins_size</code>，该值指明了传入参数的个数  </li>
+<li><code>第5-6字节--outs_size</code>，该值指明了该方法内部调用其他函数用到的寄存器个数  </li>
+<li><code>第7-8字节--tries_size</code>，该值指明了该方法用到的<code>try-catch</code>语句的个数  </li>
+<li><code>第9-12字节--debug_info_off</code>，该值指明了调试信息结构的偏移地址，如果不存在调试信息，则该值为0  </li>
+<li><code>第13-16字节--insns_size</code>，该值指明了指令列表的大小，可以这么理解：规定了指令所用的字节数大小–<code>2 x insns_size</code>  </li>
+<li><code>ushort[insns_size]--insns</code>，这个是指令列表，包含了该方法所用到的指令的字节，每个指令占用的字节数可以参考官方文档，这个没什么算法，就是一个查表的过程，例如<code>invoke-direct</code>指令占用6个字节，<code>return-void</code>指令占用2个字节  </li>
+<li><code>2个字节--padding</code>，该值存在的前提是<code>tries-size &gt; 0</code>，作用用来对齐代码  </li>
+<li><code>try_item--tries</code>，该值存在的前提是<code>tries-size &gt; 0</code>，作用是指明异常具体位置和处理方式，该结构不是解析重点，重点是解析指令，感兴趣的查看官方文档  </li>
+<li><code>encoded_catch_handler_list--handlers</code>,该结构存在前提为<code>tries-size &gt; 0</code>，同样不是解析重点，感兴趣的查看官方文档</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;具体分析过程，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/4.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/5.png">  </p>
+<hr>
+<h1 id="六、access-flags算法"><a href="#六、access-flags算法" class="headerlink" title="六、access_flags算法"></a>六、access_flags算法</h1><p><strong>&ensp;&ensp;&ensp;&ensp;access_flags访问标志具体值可以去查看官方文档，下图只截了一部分。如果access_flags的算法为<code>access_flags = flag1 | flag2 | ...</code>，如果访问标志只有一共，直接查表即可，如果是两个，按照算法对比值即可，下面举给&#x3D;个例子来理解该算法。</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/6.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;例如我有一个类的访问标志为<code>public static</code>，经过查表得知<code>public</code>对应的值为<code>0x01</code>，<code>static</code>对应的值为<code>0x8</code>，那么<code>public static</code>对应的访问标志为<code>0x01 | 0x08 = 0x9</code>，如果读取出来的access_flags为0x09，那么对应的访问标志则为<code>public static</code>，其余的照此算法计算即可！！！</strong>  </p>
+<hr>
+<h1 id="七、解析代码"><a href="#七、解析代码" class="headerlink" title="七、解析代码"></a>七、解析代码</h1><p><strong>&ensp;&ensp;&ensp;&ensp;PS：代码运行环境推荐3.6及其以上，需要模块<code>binascii</code>，运行样本为<code>Hello.dex</code>，样本附在文末网盘链接中！！！</strong>  </p>
+<p><strong>运行截图</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/7.png">  </p>
+<p><strong>通过脚本解析出来的和通过apktools反编译出来的smali文件对比图</strong><br><strong>(ps:左侧为apktools反编译出来的，右侧为脚本解析出来的，可以发现基本差不多)</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/8.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//dex_class/9.png">  </p>
+<p><strong>解析代码(ps:代码量有点多)：</strong>  </p>
+<pre><code>&#39;&#39;&#39;
+                                                    __----~~~~~~~~~~~------___
+                                .  .   ~~//====......          __--~ ~~
+                -.            \_|//     |||\\  ~~~~~~::::... /~
+                ___-==_       _-~o~  \/    |||  \\            _/~~-
+        __---~~~.==~||\=_    -_--~/_-~|-   |\\   \\        _/~
+    _-~~     .=~    |  \\-_    &#39;-~7  /-   /  ||    \      /
+.~       .~       |   \\ -_    /  /-   /   ||      \   /
+/  ____  /         |     \\ ~-_/  /|- _/   .||       \ /
+|~~    ~~|--~~~~--_ \     ~==-/   | \~--===~~        .\
+        &#39;         ~-|      /|    |-~\~~       __--~~
+                    |-~~-_/ |    |   ~\_   _-~            /\
+                        /  \     \__   \/~                \__
+                    _--~ _/ | .-~~____--~-/                  ~~==.
+                    ((-&gt;/~   &#39;.|||&#39; -_|    ~~-/ ,              . _||
+                                -_     ~\      ~~---l__i__i__i--~~_/
+                                _-~-__   ~)  \--______________--~~
+                            //.-~~~-~_--~- |-------~~~~~~~~
+                                    //.-~~~--\
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+                            神兽保佑            永无BUG
+
+@Author: windy_ll
+@Date: 2020-07-08 16:21:27
+@LastEditors: windy_ll
+@LastEditTime: 2020-07-14 23:45:28
+@Description: file content
+&#39;&#39;&#39;
+import binascii
+import re
+import os
+import sys
+
+def byte2int(bs):
+    tmp = bytearray(bs)
+    tmp.reverse()
+    rl = bytes(tmp)
+    rl = str(binascii.b2a_hex(rl),encoding=&#39;UTF-8&#39;)
+    rl = int(rl,16)
+    return rl
+
+def oneByte2Int(bs):
+    num = str(binascii.b2a_hex(bs),encoding=&#39;UTF-8&#39;)
+    num = int(num,16)
+    return num
+
+def getSmaliName(oldname):
+    newname = &#39;&#39;
+    tmpname = oldname.split(&#39;.&#39;)
+    newname = str(os.path.join(sys.path[0])) + &#39;\\smali\\&#39; + str(tmpname[0]) + &#39;.smali&#39;
+    return newname
+
+def readuleb128(f,addr):
+    result = [-1,-1]
+    n = 0
+    f.seek(addr)
+    data = oneByte2Int(f.read(1))
+    if data &gt; 0x7f:
+        f.seek(addr + 1)
+        n = 1
+        tmp = oneByte2Int(f.read(1))
+        data = (data &amp; 0x7f) | ((tmp &amp; 0x7f) &lt;&lt; 7)
+        if tmp &gt; 0x7f:
+            f.seek(addr + 2)
+            n = 2
+            tmp = oneByte2Int(f.read(1))
+            data |= (tmp &amp; 0x7f) &lt;&lt; 14
+            if tmp &gt; 0x7f:
+                f.seek(addr + 3)
+                n = 3
+                tmp = oneByte2Int(f.read(1))
+                data |= (tmp &amp; 0x7f) &lt;&lt; 21
+                if tmp &gt; 0x7f:
+                    f.seek(addr + 4)
+                    n = 4
+                    tmp = oneByte2Int(f.read(1))
+                    data |= tmp &lt;&lt; 28
+    result[0] = data
+    result[1] = addr + n + 1
+    return result
+
+def getAccessFlags(flag):
+    accessFlag = &#39;&#39;
+    flagList = [0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x100,0x200,0x400,0x800,0x2000,0x4000,0x10000]
+    flagdict = &#123;0x01:&#39;public&#39;,0x02:&#39;private&#39;,0x04:&#39;protected&#39;,0x08:&#39;static&#39;,0x10:&#39;final&#39;,0x20:&#39;synchronized&#39;,0x40:&#39;volatile&#39;,0x80:&#39;transient&#39;,0x100:&#39;native&#39;,\
+        0x200:&#39;interface&#39;,0x400:&#39;abstract&#39;,0x800:&#39;strictfp&#39;,0x2000:&#39;annotayion&#39;,0x4000:&#39;enum&#39;,0x10000:&#39;constructor&#39;&#125;
+    if flag == 0x1:
+        accessFlag = &#39;public&#39;
+    elif flag == 0x2:
+        accessFlag = &#39;private&#39;
+    elif flag == 0x4:
+        accessFlag = &#39;protected&#39;
+    elif flag == 0x8:
+        accessFlag = &#39;static&#39;
+    elif flag == 0x10:
+        accessFlag = &#39;final&#39;
+    elif flag == 0x20:
+        accessFlag = &#39;synchronized&#39;
+    elif flag == 0x40:
+        accessFlag = &#39;volatile&#39;
+    elif flag == 0x80:
+        accessFlag = &#39;transient&#39;
+    elif flag == 0x100:
+        accessFlag = &#39;native&#39;
+    elif flag == 0x200:
+        accessFlag = &#39;interface&#39;
+    elif flag == 0x400:
+        accessFlag = &#39;abstract&#39;
+    elif flag == 0x800:
+        accessFlag = &#39;strictfp&#39;
+    elif flag == 0x2000:
+        accessFlag = flagdict[0x2000]
+    elif flag == 0x4000:
+        accessFlag = flagdict[0x4000]
+    elif flag == 0x10000:
+        accessFlag = flagdict[0x10000]
+    else:
+        mark = 0
+        for k in range(14):
+            if mark == 1:
+                break
+            for item in flagList[(k + 1):]:
+                if flag == (flagList[k] | item):
+                    idx1 = flagList[k]
+                    idx2 = item
+                    accessFlag = flagdict[idx1] + &#39; &#39; + flagdict[idx2]
+                    mark = 1
+                    break
+    return accessFlag
+
+def parseTypeList(f,addr,tList):
+    paramList = []
+    f.seek(addr)
+    size = byte2int(f.read(4))
+    if size == 0:
+        return paramList
+    else:
+        addr = addr + 4
+        for k in range(size):
+            f.seek(addr + (k * 2))
+            paramString = typeList[byte2int(f.read(2))]
+            paramList.append(paramString)
+    return paramList
+
+def getStringByteArr(f,addr):
+    byteArr = bytearray()
+    f.seek(addr + 1)
+    b = f.read(1)
+    b = str(binascii.b2a_hex(b),encoding=&#39;UTF-8&#39;)
+    b = int(b,16)
+    index = 2
+    while b != 0:
+        byteArr.append(b)
+        f.seek(addr + index)
+        b = f.read(1)
+        b = str(binascii.b2a_hex(b),encoding=&#39;UTF-8&#39;)
+        b = int(b,16)
+        index = index + 1
+    return byteArr
+
+def BytesToString(byteArr):
+    try:
+        bs = bytes(byteArr)
+        stringItem = str(bs,encoding=&#39;UTF-8&#39;)
+        return stringItem
+    except:
+        pass
+
+def getTypeAmount(f):
+    f.seek(0x40)
+    stringsId = f.read(4)
+    count = byte2int(stringsId)
+    return count
+
+def getclassCount(f):
+    f.seek(0x60)
+    class_num = f.read(4)
+    class_size = byte2int(class_num)
+    return class_size
+
+def getStringsCount(f):
+    f.seek(0x38)
+    stringsId = f.read(4)
+    count = byte2int(stringsId)
+    return count
+
+def getStrings(f,stringAmount):
+    stringsList = []
+    f.seek(0x3c)
+    stringOff = f.read(4)
+    Off = byte2int(stringOff)
+    f.seek(Off)
+    for i in range(stringAmount):
+        addr = f.read(4)
+        address = byte2int(addr)
+        byteArr = getStringByteArr(f,address)
+        stringItem = BytesToString(byteArr)
+        stringsList.append(stringItem)
+        Off = Off + 4
+        f.seek(Off)
+    return stringsList
+
+def getTypeItem(f,count,strLists):
+    typeList = []
+    f.seek(0x44)
+    type_ids_off = f.read(4)
+    type_off = byte2int(type_ids_off)
+    f.seek(type_off)
+    for i in range(count):
+        typeIndex = f.read(4)
+        typeIndex = byte2int(typeIndex)
+        typeList.append(strLists[typeIndex])
+        type_off = type_off + 0x04
+        f.seek(type_off)
+    return typeList
+
+def parserField(f,stringList,typelist):
+    fieldList = []
+    f.seek(0x50)
+    fieldSize = byte2int(f.read(4))
+    fieldAddr = byte2int(f.read(4))
+    for i in range(fieldSize):
+        fieldStr = &#39;&#39;
+        f.seek(fieldAddr)
+        classIdx = typelist[byte2int(f.read(2))]
+        f.seek(fieldAddr + 2)
+        typeIdx = typelist[byte2int(f.read(2))]
+        f.seek(fieldAddr + 4)
+        nameIdx = stringList[byte2int(f.read(4))]
+        fieldAddr += 8
+        fieldStr = nameIdx + &#39;:&#39; + typeIdx
+        fieldList.append(fieldStr)
+    return fieldList
+
+def parseProtold(f,typeList,stringList):
+    pList = []
+    f.seek(0x48)
+    protoldSizeTmp = f.read(4)
+    protoldSize = byte2int(protoldSizeTmp)
+    f.seek(0x4c)
+    protoldAddr = byte2int(f.read(4))
+    for i in range(protoldSize):
+        f.seek(protoldAddr)
+        AllString = stringList[byte2int(f.read(4))]
+        protoldAddr += 4
+        f.seek(protoldAddr)
+        returnString = typeList[byte2int(f.read(4))]
+        protoldAddr += 4
+        f.seek(protoldAddr)
+        paramAddr = byte2int(f.read(4))
+        if paramAddr == 0:
+            protoldAddr += 4
+            pList.append(returnString + &#39;()&#39;)
+            continue
+        f.seek(paramAddr)
+        paramSize = byte2int(f.read(4))
+        paramList = []
+        if paramSize == 0:
+            pass
+        else:
+            paramAddr = paramAddr + 4
+            for k in range(paramSize):
+                f.seek(paramAddr + (k * 2))
+                paramString = typeList[byte2int(f.read(2))]
+                paramList.append(paramString)
+        protoldAddr += 4
+        paramTmp = []
+        for paramItem in paramList:
+            paramTmp.append(paramItem)
+        param = returnString + &#39;(&#39; + &#39;,&#39;.join(paramTmp) + &#39;)&#39;
+        pList.append(param)
+    return pList
+
+def parserMethod(f,stringlist,typelist,protoldlist):
+    methodlist = []
+    f.seek(0x58)
+    methodSize = byte2int(f.read(4))
+    f.seek(0x5c)
+    methodAddr = byte2int(f.read(4))
+    for i in range(methodSize):
+        f.seek(methodAddr)
+        classIdx = typelist[byte2int(f.read(2))]
+        f.seek(methodAddr + 2)
+        protoldIdx = protoldlist[byte2int(f.read(2))]
+        f.seek(methodAddr + 4)
+        nameIdx = stringlist[byte2int(f.read(4))]
+        tmp = protoldIdx.split(&#39;(&#39;,1)
+        methodItem = nameIdx + &#39;(&#39; + str(tmp[1]) + str(tmp[0])
+        methodlist.append(methodItem)
+        methodAddr += 8
+    return methodlist
+
+def parseBytecode(f,addr,bytecount,stringsList,fieldsList,methodsList):
+    codestr = &#39;&#39;
+    n = 0
+    while True:
+        f.seek(addr)
+        op = byte2int(f.read(1))
+        if op == 0x0e:
+            codestr += &#39;\treturn-void\r\n&#39;
+            addr = addr + 2
+            n += 2
+        elif op == 0x1a:
+            f.seek(addr + 1)
+            register = oneByte2Int(f.read(1))
+            f.seek(addr + 2)
+            idx = byte2int(f.read(2))
+            stringIdx = stringsList[idx]
+            re.sub(&quot;[\n]&quot;,&quot;&quot;,stringIdx)
+            re.sub(&quot;[\r]&quot;,&quot;&quot;,stringIdx)
+            codestr += &#39;\tconst-string v&#39; + str(register) + &#39;, &quot;&#39; + stringIdx + &#39;&quot;\r\n&#39;
+            addr = addr + 4
+            n += 4
+        elif op == 0x62:
+            f.seek(addr + 1)
+            register = oneByte2Int(f.read(1))
+            f.seek(addr + 2)
+            idx = byte2int(f.read(2))
+            codestr += &#39;\tset-object v&#39; + str(register) + &#39;, &#39; + fieldsList[idx] + &#39;\r\n&#39;
+            addr = addr + 4
+            n += 4
+        elif op == 0x70 or op == 0x6e:
+            f.seek(addr + 1)
+            data = oneByte2Int(f.read(1))
+            f.seek(addr + 4)
+            data1 = oneByte2Int(f.read(1))
+            f.seek(addr + 5)
+            data2 = oneByte2Int(f.read(1))
+            f.seek(addr + 2)
+            idx = byte2int(f.read(2))
+            registerNum = (data &amp; 0xf0) &gt;&gt; 4
+            register = &#39;&#39;
+            if registerNum == 1:
+                register_1 = data &amp; 0xf
+                register = &#39;&#123;v&#39; + str(register_1) + &#39;&#125;, &#39;
+            elif registerNum == 2:
+                register_1 = data &amp; 0xf
+                register_2 = (data1 &amp; 0xf0) &gt;&gt; 4
+                register = &#39;&#123;v&#39; + str(register_1) + &#39;, v&#39; + str(register_2) + &#39;&#125;, &#39;
+            elif registerNum == 3:
+                register_1 = data &amp; 0xf
+                register_2 = (data1 &amp; 0xf0) &gt;&gt; 4
+                register_3 = data1 &amp; 0xf
+                register = &#39;&#123;v&#39; + str(register_1) + &#39;, v&#39; + str(register_2) + &#39;, v&#39; + str(register_3) + &#39;&#125;, &#39;
+            elif registerNum == 4:
+                register_1 = data &amp; 0xf
+                register_2 = (data1 &amp; 0xf0) &gt;&gt; 4
+                register_3 = data1 &amp; 0xf
+                register_4 = (data2 &amp; 0xf0) &gt;&gt; 4
+                register = &#39;&#123;v&#39; + str(register_1) + &#39;, v&#39; + str(register_2) + &#39;, v&#39; + str(register_3) + &#39;, v&#39; + str(register_4) + &#39;&#125;, &#39;
+            else:
+                register_1 = data &amp; 0xf
+                register_2 = (data1 &amp; 0xf0) &gt;&gt; 4
+                register_3 = data1 &amp; 0xf
+                register_4 = (data2 &amp; 0xf0) &gt;&gt; 4
+                register_5 = data2 &amp; 0xf
+                register = &#39;&#123;v&#39; + str(register_1) + &#39;, v&#39; + str(register_2) + &#39;, v&#39; + str(register_3) + &#39;, v&#39; + str(register_4) + &#39;, v&#39; + str(register_5) + &#39;&#125;, &#39;
+            if op == 0x70:
+                codestr += &#39;\tinvoke-direct &#39; + register + methodsList[idx] + &#39;\r\n&#39;
+            else:
+                codestr += &#39;\tinvoke-virtual &#39; + register + methodsList[idx] + &#39;\r\n&#39;
+            addr = addr + 6
+            n += 6
+        else:
+            pass
+        if n == bytecount:
+            break
+    return codestr
+
+
+def parseCode(f,addr,fn,slist,flist,mlist):
+    f.seek(addr)
+    register_size = byte2int(f.read(2))
+    f.seek(addr + 2)
+    ins_size = byte2int(f.read(2))
+    f.seek(addr + 4)
+    out_size = byte2int(f.read(2))
+    f.seek(addr + 6)
+    try_size = byte2int(f.read(2))
+    f.seek(addr + 8)
+    debug_off = byte2int(f.read(4))
+    f.seek(addr + 12)
+    insns_size = byte2int(f.read(4))
+    address = addr + 16
+    bytecount = insns_size * 2
+    registerString = &#39;\t.register &#39; + str(register_size) + &#39;\r\n&#39;
+    fn.write(registerString)
+    codestr = parseBytecode(f,address,bytecount,slist,flist,mlist)
+    fn.write(codestr)
+    endstr = &#39;.end method\r\n&#39;
+    fn.write(endstr)
+
+def parseClassData(f,addr,fn,fList,mList,strsList):
+    re = readuleb128(f,addr)
+    static_fields_size = re[0]
+    address = re[1]
+    re = readuleb128(f,address)
+    instance_fields_size = re[0]
+    address = re[1]
+    re = readuleb128(f,address)
+    direct_method_size = re[0]
+    address = re[1]
+    re = readuleb128(f,address)
+    virtual_method_size = re[0]
+    address = re[1]
+    fieldStr = &#39;&#39;
+    if static_fields_size != 0:
+        fieldStr += &#39;# static fields\r\n&#39;
+        for i in range(static_fields_size):
+            re = readuleb128(f,address)
+            fieldidx = re[0]
+            address = re[1]
+            re = readuleb128(f,address)
+            accflag = re[0]
+            address = re[1]
+            fieldStr += &#39;.field &#39; + getAccessFlags(accflag) + &#39; &#39; + fList[fieldidx] + &#39;\r\n&#39;
+        fieldStr += &#39;\r\n\r\n&#39;
+        fn.write(fieldStr)
+    fieldStr = &#39;&#39;
+    if instance_fields_size != 0:
+        fieldStr += &#39;# instance fields\r\n&#39;
+        for i in range(instance_fields_size):
+            re = readuleb128(f,address)
+            fieldidx = re[0]
+            address = re[1]
+            re = readuleb128(f,address)
+            accflag = re[0]
+            address = re[1]
+            fieldStr += &#39;.field &#39; + getAccessFlags(accflag) + &#39; &#39; + fList[fieldidx] + &#39;\r\n&#39;
+        fieldStr += &#39;\r\n\r\n&#39;
+        fn.write(fieldStr)
+    methodStr = &#39;&#39;
+    if direct_method_size != 0:
+        methodStr += &#39;# direct methods\r\n&#39;
+        fn.write(methodStr)
+        for i in range(direct_method_size):
+            re = readuleb128(f,address)
+            methodidx = re[0]
+            address = re[1]
+            re = readuleb128(f,address)
+            accflag = re[0]
+            address = re[1]
+            re = readuleb128(f,address)
+            code_off = re[0]
+            address = re[1]
+            methodStr = &#39;.method &#39; + getAccessFlags(accflag) + &#39; &#39; + mList[methodidx] + &#39;\r\n&#39;
+            fn.write(methodStr)
+            parseCode(f,code_off,fn,strsList,fList,mList)
+        methodStr = &#39;\r\n\r\n&#39;
+        fn.write(methodStr)
+    methodStr = &#39;&#39;
+    if virtual_method_size != 0:
+        methodStr = &#39;# virtual methods\r\n&#39;
+        fn.write(methodStr)
+        for i in range(virtual_method_size):
+            re = readuleb128(f,address)
+            methodidx = re[0]
+            address = re[1]
+            re = readuleb128(f,address)
+            accflag = re[0]
+            address = re[1]
+            re = readuleb128(f,address)
+            code_off = re[0]
+            address = re[1]
+            methodStr = &#39;.method &#39; + getAccessFlags(accflag) + &#39; &#39; + mList[methodidx] + &#39;\r\n&#39;
+            fn.write(methodStr)
+            parseCode(f,code_off,fn,strsList,fList,mList)
+        methodStr = &#39;\r\n\r\n&#39;
+        fn.write(methodStr)
+
+def parseClassDefItem(f,class_num,tList,sList,fieldlist,methodlist):
+    f.seek(0x64)
+    addr = byte2int(f.read(4))
+    for i in range(class_num):
+        f.seek(addr)
+        classIdx = tList[byte2int(f.read(4))]
+        f.seek(addr + 4)
+        accessFlags = getAccessFlags(byte2int(f.read(4)))
+        if accessFlags != &#39;error&#39;:
+            pass
+        f.seek(addr + 8)
+        superclass_idx = tList[byte2int(f.read(4))]
+        f.seek(addr + 12)
+        interfaces_off = byte2int(f.read(4))
+        if interfaces_off == 0:
+            pass
+        else:
+            parseTypeList(f,interfaces_off,tList)
+        f.seek(addr + 16)
+        sourceFileIdx = sList[byte2int(f.read(4))]
+        f.seek(addr + 20)
+        annotions_off = byte2int(f.read(4))
+        address = 0
+        f.seek(addr + 24)
+        class_data_off = byte2int(f.read(4))
+        f.seek(addr + 28)
+        static_value_off = byte2int(f.read(4))
+        fname = getSmaliName(sourceFileIdx)
+        fn = open(fname,&#39;a+&#39;,True)
+        headstr = &#39;.class &#39; + str(accessFlags) + &#39; &#39; + str(classIdx) + &#39;\r\n&#39;
+        headstr += &#39;.super &#39; + str(superclass_idx) + &#39;\r\n&#39;
+        headstr += &#39;.source &#39; + &#39;&quot;&#39; + str(sourceFileIdx) + &#39;&quot;\r\n\r\n&#39;
+        fn.write(headstr)
+        if class_data_off != 0:
+            parseClassData(f,class_data_off,fn,fieldlist,methodlist,sList)
+        fn.close()
+        print(&#39;[*] %s文件的类%s写入完毕！&#39;%(fname,classIdx))
+        addr += 32
+
+
+if __name__ == &#39;__main__&#39;:
+    filename = str(os.path.join(sys.path[0])) + &#39;\\Hello.dex&#39;
+    dir = str(os.path.join(sys.path[0])) + &#39;\\smali&#39;
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    f = open(filename,&#39;rb&#39;,True)
+    stringsCount = getStringsCount(f)
+    strList = getStrings(f,stringsCount)
+    typeCount = getTypeAmount(f)
+    typeList = getTypeItem(f,typeCount,strList)
+    fieldList = parserField(f,strList,typeList)
+    protoldList = parseProtold(f,typeList,strList)
+    methodList = parserMethod(f,strList,typeList,protoldList)
+    classNum = getclassCount(f)
+    parseClassDefItem(f,classNum,typeList,strList,fieldList,methodList)
+    f.close()
+</code></pre>
+<hr>
+<h1 id="八、参考资料以及样本下载"><a href="#八、参考资料以及样本下载" class="headerlink" title="八、参考资料以及样本下载"></a>八、参考资料以及样本下载</h1><p><strong>参考资料：</strong><br><strong>&ensp;&ensp;&ensp;&ensp;1、Android逆向之旅—解析编译之后的Dex文件格式:<a target="_blank" rel="noopener" href="http://www.520monkey.com/archives/579">http://www.520monkey.com/archives/579</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;2、一篇文章带你搞懂DEX文件的结构:<a target="_blank" rel="noopener" href="https://blog.csdn.net/sinat_18268881/article/details/55832757">https://blog.csdn.net/sinat_18268881&#x2F;article&#x2F;details&#x2F;55832757</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;3、官方文档:<a target="_blank" rel="noopener" href="https://source.android.google.cn/devices/tech/dalvik/dex-format#embedded-in-class_def_item,-encoded_field,-encoded_method,-and-innerclass">https://source.android.google.cn/devices/tech/dalvik/dex-format#embedded-in-class_def_item,-encoded_field,-encoded_method,-and-innerclass</a></strong>  </p>
+<p><strong>样本及代码下载：</strong><br><strong>蓝奏云链接：<a target="_blank" rel="noopener" href="https://wws.lanzous.com/iG8Cuemlw4d">https://wws.lanzous.com/iG8Cuemlw4d</a>；密码：chb6</strong><br><strong>github链接：<a target="_blank" rel="noopener" href="https://github.com/windy-purple/parserDex">https://github.com/windy-purple/parserDex</a></strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+              <a href="/tags/Dex/" rel="tag"># Dex</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/04/18/35/" rel="prev" title="DEX文件解析--6、dex文件字段和方法定义解析">
+      <i class="fa fa-chevron-left"></i> DEX文件解析--6、dex文件字段和方法定义解析
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/08/12/36/" rel="next" title="安卓逆向从0到1学习总结">
+      安卓逆向从0到1学习总结 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81uleb128%E7%BC%96%E7%A0%81"><span class="nav-number">2.</span> <span class="nav-text">二、uleb128编码</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%B1%BB%E8%A7%A3%E6%9E%90%E7%AC%AC%E4%B8%80%E5%B1%82%E7%BB%93%E6%9E%84%EF%BC%9Aclass-def-item"><span class="nav-number">3.</span> <span class="nav-text">三、类解析第一层结构：class_def_item</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E7%B1%BB%E8%A7%A3%E6%9E%90%E7%AC%AC%E4%BA%8C%E5%B1%82%E7%BB%93%E6%9E%84%EF%BC%9Aclass-data-item"><span class="nav-number">4.</span> <span class="nav-text">四、类解析第二层结构：class_data_item</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E7%B1%BB%E8%A7%A3%E6%9E%90%E7%9A%84%E7%AC%AC%E4%B8%89%E5%B1%82%E7%BB%93%E6%9E%84%EF%BC%9Acode-item"><span class="nav-number">5.</span> <span class="nav-text">五、类解析的第三层结构：code_item</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AD%E3%80%81access-flags%E7%AE%97%E6%B3%95"><span class="nav-number">6.</span> <span class="nav-text">六、access_flags算法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E8%A7%A3%E6%9E%90%E4%BB%A3%E7%A0%81"><span class="nav-number">7.</span> <span class="nav-text">七、解析代码</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99%E4%BB%A5%E5%8F%8A%E6%A0%B7%E6%9C%AC%E4%B8%8B%E8%BD%BD"><span class="nav-number">8.</span> <span class="nav-text">八、参考资料以及样本下载</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

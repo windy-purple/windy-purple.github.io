@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、前言&ensp;&ensp;&ensp;&ensp;so文件是啥？so文件是elf文件，elf文件后缀名是.so，所以也被chang常称之为so文件,elf文件是linux底下二进制文件，可以理解为windows下的PE文件，在Android中可以比作dll，方便函数的移植，在常用于保护Android软件，增加逆向难度。解析elf文件有啥子用？最明显的两个用处就是：1、so加固；2、用于fri">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android so(ELF)文件解析">
+<meta property="og:url" content="https://windy-purple.github.io/2020/10/12/26/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、前言&ensp;&ensp;&ensp;&ensp;so文件是啥？so文件是elf文件，elf文件后缀名是.so，所以也被chang常称之为so文件,elf文件是linux底下二进制文件，可以理解为windows下的PE文件，在Android中可以比作dll，方便函数的移植，在常用于保护Android软件，增加逆向难度。解析elf文件有啥子用？最明显的两个用处就是：1、so加固；2、用于fri">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/1.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/3.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/4.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/5.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/6.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/7.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/8.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/9.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/10.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/11.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/12.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/13.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/14.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/15.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/16.png">
+<meta property="article:published_time" content="2020-10-12T01:18:26.000Z">
+<meta property="article:modified_time" content="2024-11-12T15:02:32.751Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="Android逆向">
+<meta property="article:tag" content="ELF">
+<meta property="article:tag" content="SO">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2020/10/12/26/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Android so(ELF)文件解析 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2020/10/12/26/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Android so(ELF)文件解析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-10-12 09:18:26" itemprop="dateCreated datePublished" datetime="2020-10-12T09:18:26+08:00">2020-10-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 23:02:32" itemprop="dateModified" datetime="2024-11-12T23:02:32+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>12k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>22 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="一、前言"><a href="#一、前言" class="headerlink" title="一、前言"></a>一、前言</h1><p><strong>&ensp;&ensp;&ensp;&ensp;so文件是啥？so文件是elf文件，elf文件后缀名是<code>.so</code>，所以也被chang常称之为<code>so文件</code>,elf文件是linux底下二进制文件，可以理解为windows下的<code>PE文件</code>，在Android中可以比作<code>dll</code>，方便函数的移植，在常用于保护Android软件，增加逆向难度。解析elf文件有啥子用？最明显的两个用处就是：1、so加固；2、用于frida(xposed)的检测！</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;本文使用c语言，编译器为vscode。如有错误，还请斧正！！！</strong>  </p>
+<hr>
+<h1 id="二、SO文件整体格式"><a href="#二、SO文件整体格式" class="headerlink" title="二、SO文件整体格式"></a>二、SO文件整体格式</h1><p><strong>&ensp;&ensp;&ensp;&ensp;so文件大体上可分为四部分，一般来说从上往下是<code>ELF头部-&gt;Pargarm头部-&gt;节区(Section)-&gt;节区头</code>，其中，除了<code>ELF头部</code>在文件位置固定不变外，其余三部分的位置都不固定。整体结构图可以参考非虫大佬的那张图，图片如下：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/1.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;解析语言之所以选择c语言，有两个原因：1、做so加固的时候可以需要用到，这里就干脆用c写成一个模板，哪里需要就哪里改，不像上次解析dex文件的时候用python写，结果后面写指令还原的时候需要用的时候在写一遍c版本代价太大了；2、在安卓源码中，有个<code>elf.h</code>文件，这个文件定义了我们解析时需要用到的所有数据结构，并且给出了参考注释，是很好的参考资料。<code>elf.h</code>文件路径如下：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/2.png"></p>
+<hr>
+<h1 id="三、解析ELF头部"><a href="#三、解析ELF头部" class="headerlink" title="三、解析ELF头部"></a>三、解析ELF头部</h1><p><strong>&ensp;&ensp;&ensp;&ensp;ELF头部数据格式在elf.h文件中已经给出，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/3.png">  </p>
+<p><strong>&ensp;&ensp;每个字段解释如下：</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;1、e_ident数组：前4个字节为<code>.ELF</code>，是elf标志头，第5个字节为该文件标志符，为1代表这是一个32位的elf文件，后面几个字节代表版本等信息。<br>&ensp;&ensp;&ensp;&ensp;2、e_type字段：表示是可执行文件还是链接文件等，安卓上的so文件就是分享文件，一般该字段为3，详细请看下图。<br>&ensp;&ensp;&ensp;&ensp;3、e_machine字段：该字段标志该文件运行在什么机器架构上，例如ARM。<br>&ensp;&ensp;&ensp;&ensp;4、e_version字段：该字段表示当前so文件的版本信息，一般为1.<br>&ensp;&ensp;&ensp;&ensp;5、e_entry字段：该字段是一个偏移地址，为程序启动的地址。<br>&ensp;&ensp;&ensp;&ensp;6、e_phoff字段：该字段也是一个偏移地址，指向程序头(Pargram Header)的起始地址。<br>&ensp;&ensp;&ensp;&ensp;7、e_shoff字段：该字段是一个偏移地址，指向节区头(Section Header)的起始地址。<br>&ensp;&ensp;&ensp;&ensp;8、e_flags字段：该字段表示该文件的权限，常见的值有1、2、4，分别代表read、write、exec。<br>&ensp;&ensp;&ensp;&ensp;9、e_ehsize字段：该字段表示elf文件头部大小，一般固定为52.<br>&ensp;&ensp;&ensp;&ensp;10、e_phentsize字段：该字段表示程序头(Program Header)大小，一般固定为32.<br>&ensp;&ensp;&ensp;&ensp;11、e_phnum字段：该字段表示文件中有几个程序头。<br>&ensp;&ensp;&ensp;&ensp;12、e_shentsize:该字段表示节区头(Section Header)大小，一般固定为40.<br>&ensp;&ensp;&ensp;&ensp;13、e_shnum字段：该字段表示文件中有几个节区头。<br>&ensp;&ensp;&ensp;&ensp;14、e_shstrndx字段：该字段是一个数字，这个表明了<code>.shstrtab节区(这个节区存储着所有节区的名字，例如.text)</code>的节区头是第几个。  </p>
+<p><strong>&ensp;&ensp;<code>e_type</code>具体值(相关值后面有英文注释，这里就不再添加中文注释了)：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/4.png">  </p>
+<p><strong>&ensp;&ensp;解析代码如下：</strong>  </p>
+<pre><code>struct DataOffest parseSoHeader(FILE *fp,struct DataOffest off)
+&#123;
+    Elf32_Ehdr header;
+    int i = 0;
+
+    fseek(fp,0,SEEK_SET);
+    fread(&amp;header,1,sizeof(header),fp);
+    printf(&quot;ELF Header:\n&quot;);
+    printf(&quot;    Header Magic: &quot;);
+    for (i = 0; i &lt; 16; i++)
+    &#123;
+        printf(&quot;%02x &quot;,header.e_ident[i]);
+    &#125;
+    printf(&quot;\n&quot;);
+    printf(&quot;    So File Type: 0x%02x&quot;,header.e_type);
+    switch (header.e_type)
+    &#123;
+    case 0x00:
+        printf(&quot;(No file type)\n&quot;);
+        break;
+    case 0x01:
+        printf(&quot;(Relocatable file)\n&quot;);
+        break;
+    case 0x02:
+        printf(&quot;(Executable file)\n&quot;);
+        break;
+    case 0x03:
+        printf(&quot;(Shared object file)\n&quot;);
+        break;
+    case 0x04:
+        printf(&quot;(Core file)\n&quot;);
+        break;
+    case 0xff00:
+        printf(&quot;(Beginning of processor-specific codes)\n&quot;);
+        break;
+    case 0xffff:
+        printf(&quot;(Processor-specific)\n&quot;);
+        break;
+    default:
+        printf(&quot;\n&quot;);
+        break;
+    &#125;
+    printf(&quot;    Required Architecture: 0x%04x&quot;,header.e_machine);
+    if (header.e_machine == 0x28)
+    &#123;
+        printf(&quot;(ARM)\n&quot;);
+    &#125;
+    else
+    &#123;
+        printf(&quot;\n&quot;);
+    &#125;
+    printf(&quot;    Version: 0x%02x\n&quot;,header.e_version);
+    printf(&quot;    Start Program Address: 0x%08x\n&quot;,header.e_entry);
+    printf(&quot;    Program Header Offest: 0x%08x\n&quot;,header.e_phoff);
+    off.programheadoffset = header.e_phoff;
+    printf(&quot;    Section Header Offest: 0x%08x\n&quot;,header.e_shoff);
+    off.sectionheadoffest = header.e_shoff;
+    printf(&quot;    Processor-specific Flags: 0x%08x\n&quot;,header.e_flags);
+    printf(&quot;    ELF Header Size: 0x%04x\n&quot;,header.e_ehsize);
+    printf(&quot;    Size of an entry in the program header table: 0x%04x\n&quot;,header.e_phentsize);
+    printf(&quot;    Program Header Size: 0x%04x\n&quot;,header.e_phnum);
+    off.programsize = header.e_phnum;
+    printf(&quot;    Size of an entry in the section header table: 0x%04x\n&quot;,header.e_shentsize);
+    printf(&quot;    Section Header Size: 0x%04x\n&quot;,header.e_shnum);
+    off.sectionsize = header.e_shnum;
+    printf(&quot;    String Section Index: 0x%04x\n&quot;,header.e_shstrndx);
+    off.shstrtabindex = header.e_shstrndx;
+    return off;
+&#125;
+</code></pre>
+<hr>
+<h1 id="四、程序头-Program-Header-解析"><a href="#四、程序头-Program-Header-解析" class="headerlink" title="四、程序头(Program Header)解析"></a>四、程序头(Program Header)解析</h1><p><strong>&ensp;&ensp;&ensp;&ensp;程序头在<code>elf.h</code>文件中的数据格式是<code>Elf32_Phdr</code>，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/5.png">  </p>
+<p><strong>&ensp;&ensp;每个字段解释如下：</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;1、p_type字段：该字段表明了段(Segment)类型，例如<code>PT_LOAD</code>类型，具体值看下图，实在有点多，没办法这里写完。<br>&ensp;&ensp;&ensp;&ensp;2、p_offest字段：该字段表明了这个段在该so文件的起始地址。<br>&ensp;&ensp;&ensp;&ensp;3、p_vaddr字段：该字段指明了加载进内存后的虚拟地址，我们静态解析时用不到该字段。<br>&ensp;&ensp;&ensp;&ensp;4、p_paddr字段：该字段指明加载进内存后的实际物理地址，跟上面的那个字段一样，解析时用不到。<br>&ensp;&ensp;&ensp;&ensp;5、p_filesz字段：该字段表明了这个段的大小，单位为字节。<br>&ensp;&ensp;&ensp;&ensp;6、p_memsz字段：该字段表明了这个段加载到内存后使用的字节数。<br>&ensp;&ensp;&ensp;&ensp;7、p_flags字段：该字段跟elf头部的e_flags一样，指明了该段的属性，是可读还是可写。<br>&ensp;&ensp;&ensp;&ensp;8、p_align字段：该字段用来指明在内存中对齐字节数的。  </p>
+<p><strong>&ensp;&ensp;<code>p_type</code>字段具体取值：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/6.png">  </p>
+<p><strong>&ensp;&ensp;解析代码：</strong>  </p>
+<pre><code>struct DataOffest parseSoPargramHeader(FILE *fp,struct DataOffest off)
+&#123;
+    Elf32_Half init;
+    Elf32_Half addr;
+    int i;
+    Elf32_Phdr programHeader;
+    
+    init = off.programheadoffset;
+    for (i = 0; i &lt; off.programsize; i++)
+    &#123;
+        addr = init + (i * 0x20);
+        fseek(fp,addr,SEEK_SET);
+        fread(&amp;programHeader,1,32,fp);
+        switch (programHeader.p_type)
+        &#123;
+        case 2:
+            off.dynameicoff = programHeader.p_offset;
+            off.dynameicsize = programHeader.p_filesz;
+            break;
+        default:
+            break;
+        &#125;
+        printf(&quot;\n\nSegment Header %d:\n&quot;,(i + 1));
+        printf(&quot;    Type of segment: 0x%08x\n&quot;,programHeader.p_type);
+        printf(&quot;    Segment Offset: 0x%08x\n&quot;,programHeader.p_offset);
+        printf(&quot;    Virtual address of beginning of segment: 0x%08x\n&quot;,programHeader.p_vaddr);
+        printf(&quot;    Physical address of beginning of segment: 0x%08x\n&quot;,programHeader.p_paddr);
+        printf(&quot;    Num. of bytes in file image of segment: 0x%08x\n&quot;,programHeader.p_filesz);
+        printf(&quot;    Num. of bytes in mem image of segment (may be zero): 0x%08x\n&quot;,programHeader.p_memsz);
+        printf(&quot;    Segment flags: 0x%08x\n&quot;,programHeader.p_flags);
+        printf(&quot;    Segment alignment constraint: 0x%08x\n&quot;,programHeader.p_align);
+    &#125;
+    return off;
+&#125;
+</code></pre>
+<hr>
+<h1 id="五、节区头-Section-Header-解析"><a href="#五、节区头-Section-Header-解析" class="headerlink" title="五、节区头(Section Header)解析"></a>五、节区头(Section Header)解析</h1><p><strong>&ensp;&ensp;&ensp;&ensp;节区头在elf.h文件中的数据结构为<code>Elf32_Shdr</code>，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/7.png">  </p>
+<p><strong>&ensp;&ensp;每个字段解释如下：</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;1、sh_name字段：该字段是一个索引值，是<code>.shstrtab</code>表(节区名字字符串表)的索引，指明了该节区的名字。<br>&ensp;&ensp;&ensp;&ensp;2、sh_type字段：该字段表明该节区的类型，例如值为<code>SHT_PROGBITS</code>,则该节区可能是<code>.text</code>或者<code>.rodata</code>，至于具体怎么区分，当然看sh_name字段。具体取值看下图。<br>&ensp;&ensp;&ensp;&ensp;3、sh_flags字段：跟上面的一样，就不再细说了。<br>&ensp;&ensp;&ensp;&ensp;4、sh_addr字段：该字段是一个地址，是该节区加载进内存后的地址。<br>&ensp;&ensp;&ensp;&ensp;5、sh_offset字段：该字段也是一个地址，是该节区在该so文件中的偏移地址。<br>&ensp;&ensp;&ensp;&ensp;6、sh_size字段：该字段表明了该节区的大小，单位是字节。<br>&ensp;&ensp;&ensp;&ensp;7、sh_link和sh_info字段：这两个字段只适用于少数节区，我们这里解析用不到，感兴趣的可以去看官方文档。<br>&ensp;&ensp;&ensp;&ensp;8、sh_addralign字段：该字段指明在内存中的对齐字节。<br>&ensp;&ensp;&ensp;&ensp;9、sh_entsize字段：该字段指明了该节区中每个项占用的字节数。  </p>
+<p><strong>&ensp;&ensp;<code>sh_type</code>取值：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/8.png">  </p>
+<p><strong>&ensp;&ensp;解析代码：</strong>  </p>
+<pre><code>struct DataOffest parseSoSectionHeader(FILE *fp,struct DataOffest off,struct ShstrtabTable StrList[100])
+&#123;
+    Elf32_Half init;
+    Elf32_Half addr;
+    Elf32_Shdr sectionHeader;
+    int i,id,n;
+    char ch;
+    int k = 0;
+
+    init = off.sectionheadoffest;
+    for (i = 0; i &lt; off.sectionsize; i++)
+    &#123;
+        addr = init + (i * 0x28);
+        fseek(fp,addr,SEEK_SET);
+        fread(&amp;sectionHeader,1,40,fp); 
+        switch (sectionHeader.sh_type)
+        &#123;
+        case 2:
+            off.symtaboff = sectionHeader.sh_offset;
+            off.symtabsize = sectionHeader.sh_size;
+            break;
+        case 3:
+            if(k == 0)
+            &#123;
+                off.stroffset = sectionHeader.sh_offset;
+                off.strsize = sectionHeader.sh_size;
+                k++;
+            &#125;
+            else if (k == 1)
+            &#123;
+                off.str1offset = sectionHeader.sh_offset;
+                off.str1size = sectionHeader.sh_size;
+                k++;
+            &#125;
+            else
+            &#123;
+                off.str2offset = sectionHeader.sh_offset;
+                off.str2size = sectionHeader.sh_size;
+                k++;
+            &#125;
+            break;
+        default:
+            break;
+        &#125;
+        id = sectionHeader.sh_name;
+        printf(&quot;\n\nSection Header %d\n&quot;,(i + 1));
+        printf(&quot;    Section Name: &quot;);
+        for (n = 0; n &lt; 50; n++)
+        &#123;
+            ch = StrList[id].str[n];
+            if (ch == 0)
+            &#123;
+                printf(&quot;\n&quot;);
+                break;
+            &#125;
+            else
+            &#123;
+                printf(&quot;%c&quot;,ch);
+            &#125;
+        &#125;
+        printf(&quot;    Section Type: 0x%08x\n&quot;,sectionHeader.sh_type);
+        printf(&quot;    Section Flag: 0x%08x\n&quot;,sectionHeader.sh_flags);
+        printf(&quot;    Address where section is to be loaded: 0x%08x\n&quot;,sectionHeader.sh_addr);
+        printf(&quot;    Offset: 0x%x\n&quot;,sectionHeader.sh_offset);
+        printf(&quot;    Size of section, in bytes: 0x%08x\n&quot;,sectionHeader.sh_size);
+        printf(&quot;    Section type-specific header table index link: 0x%08x\n&quot;,sectionHeader.sh_link);
+        printf(&quot;    Section type-specific extra information: 0x%08x\n&quot;,sectionHeader.sh_info);
+        printf(&quot;    Section address alignment: 0x%08x\n&quot;,sectionHeader.sh_addralign);
+        printf(&quot;    Size of records contained within the section: 0x%08x\n&quot;,sectionHeader.sh_entsize);
+    &#125;
+    return off;
+&#125;
+</code></pre>
+<hr>
+<h1 id="六、字符串节区解析"><a href="#六、字符串节区解析" class="headerlink" title="六、字符串节区解析"></a>六、字符串节区解析</h1><p><strong>&ensp;&ensp;&ensp;&ensp;PS:从这里开始网上的参考资料很少了，特别是参考代码，所以有错误的地方还请斧正；因为以后的so加固等只涉及到几个节区，所以只解析了<code>.shstrtab</code>、<code>.strtab</code>、<code>.dynstr</code>、<code>.text</code>、<code>.symtab</code>、<code>.dynamic</code>节区！！！</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;在elf头部中有个<code>e_shstrndx</code>字段，该字段指明了<code>.shstrtab</code>节区头部是文件中第几个节区头部，我们可以根据这找到<code>.shstrtab</code>节区的偏移地址，然后读取出来，就可以为每个节区名字赋值了，然后就可以顺着锁定剩下的两个字符串节区。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;在elf文件中，字符串表示方式如下：字符串的头部和尾部用标示字节<code>00</code>标志，同时上一个字符串尾部标识符<code>00</code>作为下一个字符串头部标识符。例如我有两个紧邻的字符串分别是<code>a</code>和<code>b</code>，那么他们在elf文件中16进制为<code>00 97 00 98 00</code>。</strong>  </p>
+<p><strong>&ensp;&ensp;解析代码如下(PS:因为编码问题，第一次打印字符串表没问题，但填充进sh_name就乱码，所以这里只放上解析<code>.shstrtab</code>的代码，但剩下两个节区节区代码一样)：</strong>  </p>
+<pre><code>void parseStrSection(FILE *fp,struct DataOffest off,int flag)
+&#123;
+    int total = 0;
+    int i;
+    int ch;
+    int mark;
+    Elf32_Off init;
+    Elf32_Off addr;
+    Elf32_Word count;
+
+    mark = 1;
+
+
+    if (flag == 1)
+    &#123;
+        count = off.strsize;
+        init = off.stroffset;
+    &#125;
+    else if (flag == 2)
+    &#123;
+        count = off.str1size;
+        init = off.str1offset;
+    &#125;
+    else
+    &#123;
+        count = off.str2size;
+        init = off.str2offset;
+    &#125;
+</code></pre>
+<p>​<br>        printf(“String Address&#x3D;&#x3D;&gt;0x%x\n”,init);<br>        printf(“String List %d:\n\t[1]&#x3D;&#x3D;&gt;”,flag);</p>
+<pre><code>    for (i = 0; i &lt; count; i++)
+    &#123;
+
+        addr = init + (i * 1);
+
+        fseek(fp,addr,SEEK_SET);
+        fread(&amp;ch,1,1,fp);
+
+        if (i == 0 &amp;&amp; ch == 0)
+        &#123;
+            continue;
+        &#125;
+        else if (ch != 0)
+        &#123;
+            printf(&quot;%c&quot;,ch);
+        &#125;
+        else if (ch == 0 &amp;&amp; i !=0)
+        &#123;
+            printf(&quot;\n\t[%d]==&gt;&quot;,(++mark));
+        &#125;
+    &#125;
+    printf(&quot;\n&quot;);
+    
+&#125;
+</code></pre>
+<hr>
+<h1 id="七、-dynamic解析"><a href="#七、-dynamic解析" class="headerlink" title="七、.dynamic解析"></a>七、.dynamic解析</h1><p><strong>&ensp;&ensp;&ensp;&ensp;<code>.dynamic</code>在<code>elf.h</code>文件中的数据结构是<code>Elf32-Dyn</code>，如下图所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/9.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;第一个字段表明了类型，占4个字节；第二个字段是一个共用体，也占四个字节，描述了具体的项信息。解析代码如下：</strong>  </p>
+<pre><code>void parseSoDynamicSection(FILE *fp,struct DataOffest off)
+&#123;
+    int dynamicnum;
+    Elf32_Off init;
+    Elf32_Off addr;
+    Elf32_Dyn dynamicData;
+    int i;
+
+    init = off.dynameicoff;
+    dynamicnum = (off.dynameicsize / 8);
+
+    printf(&quot;Dynamic:\n&quot;);
+    printf(&quot;\t\tTag\t\t\tType\t\t\tName/Value\n&quot;);
+
+    for (i = 0; i &lt; dynamicnum; i++)
+    &#123;
+        addr = init + (i * 8);
+        fseek(fp,addr,SEEK_SET);
+        fread(&amp;dynamicData,1,8,fp);
+        printf(&quot;\t\t0x%08x\t\tNOPRINTF\t\t0x%x\n&quot;,dynamicData.d_tag,dynamicData.d_un);
+    &#125;
+    
+&#125;
+</code></pre>
+<hr>
+<h1 id="八、-symtab解析"><a href="#八、-symtab解析" class="headerlink" title="八、.symtab解析"></a>八、.symtab解析</h1><p><strong>&ensp;&ensp;&ensp;&ensp;该节区是该so文件的符号表，它在<code>elf.h</code>文件中的数据结构是<code>Elf32_Sym</code>，如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/10.png">  </p>
+<p><strong>&ensp;&ensp;每个字段解释如下：</strong>  </p>
+<p>&ensp;&ensp;&ensp;&ensp;1、st_name字段：该字段是一个索引值，指明了该项的名字。<br>&ensp;&ensp;&ensp;&ensp;2、st_value字段：该字段表明了相关联符号的取值。<br>&ensp;&ensp;&ensp;&ensp;3、stz-size字段：该字段指明了每个项所占用的字节数。<br>&ensp;&ensp;&ensp;&ensp;4、st_info和st_other字段：这两个字段指明了符号的类型。<br>&ensp;&ensp;&ensp;&ensp;5、st_shndx字段：相关索引。  </p>
+<p><strong>&ensp;&ensp;解析代码如下(PS：由于乱码问题，索引手动固定了地址测试，有兴趣的挨个解析字符应该可以解决乱码问题)：</strong>  </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">void parseSoDynamicSection(FILE *fp,struct DataOffest off)</span><br><span class="line">&#123;</span><br><span class="line">    int dynamicnum;</span><br><span class="line">    Elf32_Off init;</span><br><span class="line">    Elf32_Off addr;</span><br><span class="line">    Elf32_Dyn dynamicData;</span><br><span class="line">    int i;</span><br><span class="line"></span><br><span class="line">    init = off.dynameicoff;</span><br><span class="line">    dynamicnum = (off.dynameicsize / 8);</span><br><span class="line"></span><br><span class="line">    printf(&quot;Dynamic:\n&quot;);</span><br><span class="line">    printf(&quot;\t\tTag\t\t\tType\t\t\tName/Value\n&quot;);</span><br><span class="line"></span><br><span class="line">    for (i = 0; i &lt; dynamicnum; i++)</span><br><span class="line">    &#123;</span><br><span class="line">        addr = init + (i * 8);</span><br><span class="line">        fseek(fp,addr,SEEK_SET);</span><br><span class="line">        fread(&amp;dynamicData,1,8,fp);</span><br><span class="line">        printf(&quot;\t\t0x%08x\t\tNOPRINTF\t\t0x%x\n&quot;,dynamicData.d_tag,dynamicData.d_un);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">    void parseSymtabSection(FILE *fp,struct DataOffest off)</span><br><span class="line">    &#123;</span><br><span class="line">        Elf32_Off init;</span><br><span class="line">        Elf32_Off addr;</span><br><span class="line">        Elf32_Word count;</span><br><span class="line">        Elf32_Sym symtabSection;</span><br><span class="line">        int k,i;</span><br><span class="line"></span><br><span class="line">        init = off.symtaboff;</span><br><span class="line">        count = off.symtabsize;</span><br><span class="line"></span><br><span class="line">        printf(&quot;SymTable:\n&quot;);</span><br><span class="line"></span><br><span class="line">        for (i = 0; i &lt; count; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            addr = init + (i * 16);</span><br><span class="line">            fseek(fp,addr,SEEK_SET);</span><br><span class="line">            fread(&amp;symtabSection,1,16,fp);</span><br><span class="line">            printf(&quot;Symbol Name Index: 0x%x\n&quot;,symtabSection.st_name);</span><br><span class="line">            printf(&quot;Value or address associated with the symbol: 0x%08x\n&quot;,symtabSection.st_value);</span><br><span class="line">            printf(&quot;Size of the symbol: 0x%x\n&quot;,symtabSection.st_size);</span><br><span class="line">            printf(&quot;Symbol&#x27;s type and binding attributes: %c\n&quot;,symtabSection.st_info);</span><br><span class="line">            printf(&quot;Must be zero; reserved: 0x%x\n&quot;,symtabSection.st_other);</span><br><span class="line">            printf(&quot;Which section (header table index) it&#x27;s defined in: 0x%x\n&quot;,symtabSection.st_shndx);</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="九、-text解析"><a href="#九、-text解析" class="headerlink" title="九、.text解析"></a>九、.text解析</h1><p><strong>&ensp;&ensp;&ensp;&ensp;PS：这部分没代码了，只简单解析一下，因为解析arm指令太麻烦了，估计得写个半年都不一定能搞定，后续写了会同步更新在github!!!</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;<code>.text</code>节区存储着可执行指令，我们可以通过节区头部的名字锁定<code>.text</code>的偏移地址和大小，找到该节区后，我们会发现这个节区存储的就是arm机器码，直接照着指令集翻译即可，没有其他的结构。通过ida验证如下：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/11.png">  </p>
+<hr>
+<h1 id="十、代码测试相关截图"><a href="#十、代码测试相关截图" class="headerlink" title="十、代码测试相关截图"></a>十、代码测试相关截图</h1><p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/12.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/13.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/14.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/15.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//soparser/16.png">  </p>
+<hr>
+<h1 id="十一、frida反调试和后序"><a href="#十一、frida反调试和后序" class="headerlink" title="十一、frida反调试和后序"></a>十一、frida反调试和后序</h1><p><strong>&ensp;&ensp;&ensp;&ensp;frida反调试最简单的就是检查端口，检查进程名，检查so文件等，但最准确以及最复杂的是检查汇编指令，我们知道frida是通过一个大调整实现hook，而跳转的指令就那么几条，我们是否可以通过检查每个函数第一条指令来判断是否有frida了！！！(ps：简单写一下原理，拉开写就太多了，这里感谢某大佬和我讨论的这个话题！！！)</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;本来因为这个so文件解析要写到明年去了，没想到看起来代码量大，但实际要用到的地方代码量很少。。。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;源码github链接：<a target="_blank" rel="noopener" href="https://github.com/windy-purple/parseso/">https://github.com/windy-purple/parseso/</a></strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+              <a href="/tags/ELF/" rel="tag"># ELF</a>
+              <a href="/tags/SO/" rel="tag"># SO</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/09/43/" rel="prev" title="安卓加固方案从落地加载到类指令抽取编写报告">
+      <i class="fa fa-chevron-left"></i> 安卓加固方案从落地加载到类指令抽取编写报告
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/05/03/16/" rel="next" title="对脱壳脚本的一些改进--识别出目标DEX">
+      对脱壳脚本的一些改进--识别出目标DEX <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81SO%E6%96%87%E4%BB%B6%E6%95%B4%E4%BD%93%E6%A0%BC%E5%BC%8F"><span class="nav-number">2.</span> <span class="nav-text">二、SO文件整体格式</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E8%A7%A3%E6%9E%90ELF%E5%A4%B4%E9%83%A8"><span class="nav-number">3.</span> <span class="nav-text">三、解析ELF头部</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E7%A8%8B%E5%BA%8F%E5%A4%B4-Program-Header-%E8%A7%A3%E6%9E%90"><span class="nav-number">4.</span> <span class="nav-text">四、程序头(Program Header)解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%8A%82%E5%8C%BA%E5%A4%B4-Section-Header-%E8%A7%A3%E6%9E%90"><span class="nav-number">5.</span> <span class="nav-text">五、节区头(Section Header)解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%8A%82%E5%8C%BA%E8%A7%A3%E6%9E%90"><span class="nav-number">6.</span> <span class="nav-text">六、字符串节区解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%83%E3%80%81-dynamic%E8%A7%A3%E6%9E%90"><span class="nav-number">7.</span> <span class="nav-text">七、.dynamic解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%AB%E3%80%81-symtab%E8%A7%A3%E6%9E%90"><span class="nav-number">8.</span> <span class="nav-text">八、.symtab解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B9%9D%E3%80%81-text%E8%A7%A3%E6%9E%90"><span class="nav-number">9.</span> <span class="nav-text">九、.text解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E4%BB%A3%E7%A0%81%E6%B5%8B%E8%AF%95%E7%9B%B8%E5%85%B3%E6%88%AA%E5%9B%BE"><span class="nav-number">10.</span> <span class="nav-text">十、代码测试相关截图</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81frida%E5%8F%8D%E8%B0%83%E8%AF%95%E5%92%8C%E5%90%8E%E5%BA%8F"><span class="nav-number">11.</span> <span class="nav-text">十一、frida反调试和后序</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

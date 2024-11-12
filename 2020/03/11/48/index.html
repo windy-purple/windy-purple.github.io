@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一、Frida概述&ensp;&ensp;&ensp;&ensp;Frida是一款轻量级HOOK框架，可用于多平台上，例如android、windows、ios等。&ensp;&ensp;&ensp;&ensp;frida分为两部分，服务端运行在目标机上，通过注入进程的方式来实现劫持应用函数，另一部分运行在系统机器上。&ensp;&ensp;&ensp;&ensp;frida上层接口支持js、py">
+<meta property="og:type" content="article">
+<meta property="og:title" content="frida入门总结">
+<meta property="og:url" content="https://windy-purple.github.io/2020/03/11/48/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="一、Frida概述&ensp;&ensp;&ensp;&ensp;Frida是一款轻量级HOOK框架，可用于多平台上，例如android、windows、ios等。&ensp;&ensp;&ensp;&ensp;frida分为两部分，服务端运行在目标机上，通过注入进程的方式来实现劫持应用函数，另一部分运行在系统机器上。&ensp;&ensp;&ensp;&ensp;frida上层接口支持js、py">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/1.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/3.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/4.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/5.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/6.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/7.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/8.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/9.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/6.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/10.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/11.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/12.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/23.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/13.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/14.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/15.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/16.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/17.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/22.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/18.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/19.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/20.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/21.png">
+<meta property="article:published_time" content="2020-03-11T08:39:48.000Z">
+<meta property="article:modified_time" content="2024-11-12T14:49:19.420Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="frida">
+<meta property="article:tag" content="Android逆向">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2020/03/11/48/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>frida入门总结 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2020/03/11/48/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          frida入门总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-11 16:39:48" itemprop="dateCreated datePublished" datetime="2020-03-11T16:39:48+08:00">2020-03-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 22:49:19" itemprop="dateModified" datetime="2024-11-12T22:49:19+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>6.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>12 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一、Frida概述"><a href="#一、Frida概述" class="headerlink" title="一、Frida概述"></a>一、Frida概述</h2><p><strong>&ensp;&ensp;&ensp;&ensp;Frida是一款轻量级HOOK框架，可用于多平台上，例如android、windows、ios等。</strong><br><strong>&ensp;&ensp;&ensp;&ensp;frida分为两部分，服务端运行在目标机上，通过注入进程的方式来实现劫持应用函数，另一部分运行在系统机器上。</strong><br><strong>&ensp;&ensp;&ensp;&ensp;frida上层接口支持js、python、c等。</strong><br><strong>&ensp;&ensp;&ensp;&ensp;Frida官方github地址为：<a target="_blank" rel="noopener" href="https://github.com/frida">frida官方github地址</a></strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;PS：虽然百度一下会发现frida教程有不少，但是涉及到native层的教程基本很少，然后对每一句Hook代码解释一下的更是少之又少，所以我还是厚着脸皮从自己的角度写了这一篇！！！</strong></p>
+<hr>
+<h2 id="二、Frida安装"><a href="#二、Frida安装" class="headerlink" title="二、Frida安装"></a>二、Frida安装</h2><p><strong>&ensp;&ensp;&ensp;&ensp;1 、安装python3.7并配置好环境变量（官方推荐python3以上版本至少为3.7），python安装包官方下载地址：<a target="_blank" rel="noopener" href="https://www.python.org/downloads/">https://www.python.org/downloads/</a>。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2 、安装frida模块，命令为<code>pip install frida</code>(配置了多个python版本环境的可以使用命令<code>python -m pip install frida</code>防止用<code>pip install frida</code>命令报错)。</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/1.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;3、安装frida-tools模块，命令同上，<code>pip install frida-tools</code>或者<code>python -m pip install frida-tools</code>。</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/2.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;4、下载运行在目标机上的frida-sever端，官方下载地址：<a target="_blank" rel="noopener" href="https://github.com/frida/frida/releases">https://github.com/frida/frida/releases</a>，下载时要选择对应的版本下载，例如我的机器为arm32为架构，就选择<code>frida-server-12.8.14-android-arm.xz</code>下载。（可以在adb使用命令<code>cat /proc/cpuinfo</code>查询）</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/3.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/4.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;5、将第四步下载好的文件解压，然后通过命令<code>adb push 你的电脑是存放位置 /data/local/tmp</code>将文件传输到手机中，然后通过<code>adb shell</code>进入手机端，给文件赋权777，并于root权限启动。</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/5.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/6.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;6、做完以上几步后，新开一个命令行输入命令<code>frida-ps -U</code>查看手机进程，如果出现以下结果，则frida安装成功。</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/7.png">  </p>
+<hr>
+<h2 id="三、Frida-Hook-Java层"><a href="#三、Frida-Hook-Java层" class="headerlink" title="三、Frida Hook Java层"></a>三、Frida Hook Java层</h2><p><strong>&ensp;&ensp;&ensp;&ensp;1、编写一个小demo用来hook，该demo关键部分代码如下：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/8.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、现在我们将该apk安装好，运行看一下未Hook前的显示字符串！！！</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/9.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;3、现在来编写Hook的Python脚本，脚本代码如下：</strong>  </p>
+<pre><code>import frida  #导入frida模块
+import sys    #导入sys模块
+
+jscode = &quot;&quot;&quot;  #从此处开始定义用来Hook的javascript代码
+    Java.perform(function()&#123;  
+        var MainActivity = Java.use(&#39;com.example.testfrida.MainActivity&#39;); //获得MainActivity类
+        MainActivity.testFrida.implementation = function()&#123; //Hook testFrida函数，用js自己实现
+            send(&#39;Statr! Hook!&#39;); //发送信息，用于回调python中的函数
+            return &#39;Change String!&#39; //劫持返回值，修改为我们想要返回的字符串
+        &#125;
+    &#125;);
+&quot;&quot;&quot;
+
+def on_message(message,data): #js中执行send函数后要回调的函数
+    print(message)
+    
+process = frida.get_remote_device().attach(&#39;com.example.testfrida&#39;) #得到设备并劫持进程com.example.testfrida（该开始用get_usb_device函数用来获取设备，但是一直报错找不到设备，改用get_remote_device函数即可解决这个问题）
+script = process.create_script(jscode) #创建js脚本
+script.on(&#39;message&#39;,on_message) #加载回调函数，也就是js中执行send函数规定要执行的python函数
+script.load() #加载脚本
+sys.stdin.read()
+</code></pre>
+<p><strong>&ensp;&ensp;&ensp;&ensp;4、现在python脚本编写完毕，我们来执行该脚本，首先手机端执行frida，然后通过命令<code>adb forward tcp:27043 tcp:27043</code>和<code>adb forward tcp:27042 tcp:27042</code>来转发这两个端口，接着在手机上运行该应用程序，在命令行中执行脚本，最后点击应用的按钮，即可看到字符串已经被替换成我们要替换的了！！！</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/6.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/10.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/11.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/12.png">  </p>
+<hr>
+<h2 id="四、Frida-Hook-Native层"><a href="#四、Frida-Hook-Native层" class="headerlink" title="四、Frida Hook Native层"></a>四、Frida Hook Native层</h2><h3 id="ensp-ensp-4-1、Hook-native层返回值为int类型的demo"><a href="#ensp-ensp-4-1、Hook-native层返回值为int类型的demo" class="headerlink" title="&ensp;&ensp;4.1、Hook native层返回值为int类型的demo"></a>&ensp;&ensp;4.1、Hook native层返回值为int类型的demo</h3><p><strong>&ensp;&ensp;&ensp;&ensp;1、还是先写一个小demo，下面贴一下关键代码（很简单c语言代码就不再解释了，至于native层函数怎么编写，由于本篇主要不是讲怎么编写so函数，就不过多叙述了，实在不会的可以看一下我的一篇博客，我觉得写得还是挺详细的，博客编写native层函数链接：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/aWxvdmVseXc0/p/11564809.html">https://www.cnblogs.com/aWxvdmVseXc0/p/11564809.html</a>）和未Hook前截图：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/23.png">  </p>
+<p><strong>代码：</strong>  </p>
+<pre><code>/* DO NOT EDIT THIS FILE - it is machine generated */
+#include &lt;jni.h&gt;
+/* Header for class com_example_fridaso_FridaSoDefine */
+
+#ifndef _Included_com_example_fridaso_FridaSoDefine
+#define _Included_com_example_fridaso_FridaSoDefine
+#ifdef __cplusplus
+extern &quot;C&quot; &#123;
+#endif
+/*
+* Class:     com_example_fridaso_FridaSoDefine
+* Method:    FridaSo
+* Signature: (II)I
+*/
+JNIEXPORT jint JNICALL Java_com_example_fridaso_FridaSoDefine_FridaSo(JNIEnv *env, jclass obj, jint a, jint b)
+&#123;
+    int c;
+    c = a + b;
+    return c;
+&#125;
+
+#ifdef __cplusplus
+&#125;
+#endif
+#endif  
+</code></pre>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/13.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/14.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、接下来我们来写python hook脚本，我们需要hook native层这个函数，达到返回值修改为0的效果。写到这里需要说明一下关于so文件当中的函数，分为导出函数和未导出函数两种，导出函数打开IDA后能够在导出表中找到的函数就是导出函数，未导出函数则在导出表中寻找不到，一般来说静态编写的native函数都能在导出表中寻找到，而动态加载的则无法在导出表中发现！！！</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/15.png">  </p>
+<p><strong>代码如下：（跟上面hook java层重复的代码不在注释详讲了！！！）</strong>  </p>
+<pre><code>import frida
+import sys
+
+jscode = &quot;&quot;&quot;
+Java.perform(function()&#123;
+    //下面这一句代码是指定要Hook的so文件名和要Hook的函数名，函数名就是上面IDA导出表中显示的那个函数名
+    Interceptor.attach(Module.findExportByName(&quot;libfridaso.so&quot;,&quot;Java_com_example_fridaso_FridaSoDefine_FridaSo&quot;),&#123;
+        //onEnter: function(args)顾名思义就是进入该函数前要执行的代码，其中args是传入的参数，一般so层函数第一个参数都是JniEnv，第二个参数是jclass，从第三个参数开始才是我们java层传入的参数
+        onEnter: function(args) &#123;
+            send(&quot;Hook start&quot;);
+            send(&quot;args[2]=&quot; + args[2]); //打印我们java层第一个传入的参数
+            send(&quot;args[3]=&quot; + args[3]); //打印我们java层传入的第二个参数
+        &#125;,
+        onLeave: function(retval)&#123; //onLeave: function(retval)是该函数执行结束要执行的代码，其中retval参数即是返回值
+            send(&quot;return:&quot;+retval); //打印返回值
+            retval.replace(0); //替换返回值为0
+        &#125;
+    &#125;);
+&#125;);
+&quot;&quot;&quot;
+def printMessage(message,data):
+    if message[&#39;type&#39;] == &#39;send&#39;:
+        print(&#39;[*] &#123;0&#125;&#39;.format(message[&#39;payload&#39;]))
+    else:
+        print(message)
+
+process = frida.get_remote_device().attach(&#39;com.example.fridaso&#39;)
+script = process.create_script(jscode)
+script.on(&#39;message&#39;,printMessage)
+script.load()
+sys.stdin.read()
+</code></pre>
+<p><strong>&ensp;&ensp;&ensp;&ensp;3、最后在手机端执行frida-server，转发端口，开启应用，执行脚本，点击按钮，即可看到返回值已经被修改成了0，效果图如下：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/16.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/17.png">  </p>
+<h3 id="ensp-ensp-4-2、Hook-native层返回值为String类型的demo"><a href="#ensp-ensp-4-2、Hook-native层返回值为String类型的demo" class="headerlink" title="&ensp;&ensp;4.2、Hook native层返回值为String类型的demo"></a>&ensp;&ensp;4.2、Hook native层返回值为String类型的demo</h3><p><strong>&ensp;&ensp;&ensp;&ensp;1、上面已经写了怎么Hook修改native层函数返回值为int类型的情况，使用<code>replace()</code>函数直接修改即可，但是返回情况为字符串则不一样，在c语言中，返回值为字符串其实是返回了一个<code>char *</code>（字符串指针），所以简单的替换是无法取效果的，具体怎么修改返回值，接着看下面，下面还是贴上demo的关键代码和未Hook前截图：</strong></p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/22.png">  </p>
+<p><strong>代码如下：</strong>  </p>
+<pre><code>/* DO NOT EDIT THIS FILE - it is machine generated */
+#include &lt;jni.h&gt;
+/* Header for class com_example_fridasostring_fridaSoString */
+
+/* DO NOT EDIT THIS FILE - it is machine generated */
+#include &lt;jni.h&gt;
+/* Header for class com_example_fridasostring_fridaSoString */
+
+#ifndef _Included_com_example_fridasostring_fridaSoString
+#define _Included_com_example_fridasostring_fridaSoString
+#ifdef __cplusplus
+extern &quot;C&quot; &#123;
+#endif
+/*
+* Class:     com_example_fridasostring_fridaSoString
+* Method:    FridaSo
+* Signature: (Ljava/lang/String;)Ljava/lang/String;
+*/
+JNIEXPORT jstring JNICALL Java_com_example_fridasostring_fridaSoString_FridaSo(JNIEnv *env, jclass obj, jstring str)
+&#123;
+    return str;
+&#125;
+
+#ifdef __cplusplus
+&#125;
+#endif
+#endif
+</code></pre>
+<p><strong>未Hook前运行截图：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/18.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;2、接下来是python Hook脚本（只解释与上面有差异的代码），Hook的函数具体函数名还是使用IDA去寻找</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/19.png">  </p>
+<p><strong>python代码：</strong>  </p>
+<pre><code>import frida
+import sys
+
+jscode = &quot;&quot;&quot;
+Java.perform(function()&#123;
+    Interceptor.attach(Module.findExportByName(&quot;libfridaso.so&quot;,&quot;Java_com_example_fridasostring_fridaSoString_FridaSo&quot;),&#123;
+        onEnter: function(args) &#123;
+            send(&quot;Hook start&quot;);
+            send(&quot;args[2]=&quot; + args[2]);
+        &#125;,
+        onLeave: function(retval)&#123;
+            send(&quot;return:&quot;+retval);
+            var env = Java.vm.getEnv(); //获取env对象，也就是native函数的第一个参数
+            var jstrings = env.newStringUtf(&quot;tamper&quot;); //因为返回的是字符串指针，使用我们需要构造一个newStringUtf对象，用来代替这个指针
+            retval.replace(jstrings); //替换返回值
+        &#125;
+    &#125;);
+&#125;);
+&quot;&quot;&quot;
+def printMessage(message,data):
+    if message[&#39;type&#39;] == &#39;send&#39;:
+        print(&#39;[*] &#123;0&#125;&#39;.format(message[&#39;payload&#39;]))
+    else:
+        print(message)
+
+process = frida.get_remote_device().attach(&#39;com.example.fridasostring&#39;)
+script = process.create_script(jscode)
+script.on(&#39;message&#39;,printMessage)
+script.load()
+sys.stdin.read()
+</code></pre>
+<p><strong>&ensp;&ensp;&ensp;&ensp;3、运行脚本后，点击按钮，我们可以看到字符串已经被替换成了<code>tamper</code>，如下所示：</strong>  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/20.png">  </p>
+<p><img src="https://cdn.jsdelivr.net/gh/windy-purple/blog_picture_bed//frida/21.png">  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;4、关于为导出函数的Hook，大体上差不多，差别在于需要通过ida找到偏移值计算地址，而不是像导出函数这么方便罢了，但原理都是差不多的，就不在细说了！！！</strong>  </p>
+<hr>
+<h2 id="五、相关附件"><a href="#五、相关附件" class="headerlink" title="五、相关附件"></a>五、相关附件</h2><p><strong>&ensp;&ensp;&ensp;&ensp;python Hook代码已经demo下载链接：<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1ZCIeJXzeTpQ8uJ9Ew5nnGQ">https://pan.baidu.com/s/1ZCIeJXzeTpQ8uJ9Ew5nnGQ</a></strong><br><strong>&ensp;&ensp;&ensp;&ensp;提取码：z94i</strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/frida/" rel="tag"># frida</a>
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/12/30/24/" rel="prev" title="日常破解--从XCTF的app3题目简单了解安卓备份文件以及sqliteCipher加密数据库">
+      <i class="fa fa-chevron-left"></i> 日常破解--从XCTF的app3题目简单了解安卓备份文件以及sqliteCipher加密数据库
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/28/26/" rel="next" title="XCTF mobile新手区解题记录以及一些总结和思考">
+      XCTF mobile新手区解题记录以及一些总结和思考 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Frida%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">一、Frida概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Frida%E5%AE%89%E8%A3%85"><span class="nav-number">2.</span> <span class="nav-text">二、Frida安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81Frida-Hook-Java%E5%B1%82"><span class="nav-number">3.</span> <span class="nav-text">三、Frida Hook Java层</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Frida-Hook-Native%E5%B1%82"><span class="nav-number">4.</span> <span class="nav-text">四、Frida Hook Native层</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ensp-ensp-4-1%E3%80%81Hook-native%E5%B1%82%E8%BF%94%E5%9B%9E%E5%80%BC%E4%B8%BAint%E7%B1%BB%E5%9E%8B%E7%9A%84demo"><span class="nav-number">4.1.</span> <span class="nav-text">  4.1、Hook native层返回值为int类型的demo</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ensp-ensp-4-2%E3%80%81Hook-native%E5%B1%82%E8%BF%94%E5%9B%9E%E5%80%BC%E4%B8%BAString%E7%B1%BB%E5%9E%8B%E7%9A%84demo"><span class="nav-number">4.2.</span> <span class="nav-text">  4.2、Hook native层返回值为String类型的demo</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E7%9B%B8%E5%85%B3%E9%99%84%E4%BB%B6"><span class="nav-number">5.</span> <span class="nav-text">五、相关附件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

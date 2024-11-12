@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="前言 &ensp;&ensp;&ensp;&ensp;PS:该文已经首发于某公众号，介意者勿喷！！！ &ensp;&ensp;&ensp;&ensp;初识安卓逆向是在2019年的暑假，到现在也快一年了，这一年来有刚从web渗透转来的迷茫，有成功破解了第一个app的喜悦，也有通宵熬夜逆向的心酸，到现在感觉自己成功踏进逆向大门的满足感。原本打算在入门之后弄个安卓逆向教程作为总结，但是吧，写文章教程，各">
+<meta property="og:type" content="article">
+<meta property="og:title" content="安卓逆向从0到1学习总结">
+<meta property="og:url" content="https://windy-purple.github.io/2020/08/12/36/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="前言 &ensp;&ensp;&ensp;&ensp;PS:该文已经首发于某公众号，介意者勿喷！！！ &ensp;&ensp;&ensp;&ensp;初识安卓逆向是在2019年的暑假，到现在也快一年了，这一年来有刚从web渗透转来的迷茫，有成功破解了第一个app的喜悦，也有通宵熬夜逆向的心酸，到现在感觉自己成功踏进逆向大门的满足感。原本打算在入门之后弄个安卓逆向教程作为总结，但是吧，写文章教程，各">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-08-12T08:39:36.000Z">
+<meta property="article:modified_time" content="2024-11-12T14:59:16.648Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="Android逆向">
+<meta property="article:tag" content="经验">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://windy-purple.github.io/2020/08/12/36/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>安卓逆向从0到1学习总结 | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2020/08/12/36/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          安卓逆向从0到1学习总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-08-12 16:39:36" itemprop="dateCreated datePublished" datetime="2020-08-12T16:39:36+08:00">2020-08-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 22:59:16" itemprop="dateModified" datetime="2024-11-12T22:59:16+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><hr>
+<p><strong>&ensp;&ensp;&ensp;&ensp;PS:该文已经首发于某公众号，介意者勿喷！！！</strong></p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;初识安卓逆向是在2019年的暑假，到现在也快一年了，这一年来有刚从web渗透转来的迷茫，有成功破解了第一个app的喜悦，也有通宵熬夜逆向的心酸，到现在感觉自己成功踏进逆向大门的满足感。原本打算在入门之后弄个安卓逆向教程作为总结，但是吧，写文章教程，各大论坛都有，而且还写得挺好，例如52论坛的&lt;&lt;教我兄弟学逆向&gt;&gt;教程，自己再去写就没多大意思了；做视频教程吧，因为个人原因，没有那么多时间去录制视频和剪辑视频。谨以此文总结我的逆向路程以及送给想要学习安卓逆向的新人！！！</strong>  </p>
+<hr>
+<h2 id="前置技能"><a href="#前置技能" class="headerlink" title="前置技能"></a>前置技能</h2><hr>
+<p><strong>&ensp;&ensp;&ensp;&ensp;逆向这玩意不是很玄学，不像web渗透那样很玄学(强烈吐槽一波以前我还在做web渗透的时候，挖不出大洞也就算了，全都是一堆反射型的xss，xss到底跟我有多过不去啊)，只要你基础够，在舍得掉头发，就能够有产出，下面简单罗列一下我个人认为的安卓逆向所需要的前置技能：</strong>  </p>
+<ul>
+<li><p><strong>一定程度的安卓正向开发经验</strong>  </p>
+</li>
+<li><p><strong>会写简单的脚本，例如python、c</strong></p>
+</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;正向开发越熟练，在逆向的过程越容易找到关键点，同时在正向开发的过程中总要了解一下安卓系统的机制吧，这都是后面的无论是脱壳还是写自己的加固代码必要的知识；至于后面的会写简单的脚本，既是为了逆向也是为了能够正向开发，例如脱壳现在的主流方案要么ida动态调试到脱壳点dump下来，要么使用frida编写脚本hook脱壳，再要么编写xposed插件脱壳（ps:脚本小子除外），这些都需要我们自己写脚本的；至于正向开发那就更没得说了，无论是你想实现自己的加固方案还是要做涉及到底层的开发都需要写到so层里面去，而这前提是你的会c或者c++。至于怎么学，我个人建议去网上找文章教程跟着敲代码就可以了，例如菜鸟教程或w3c！！！</strong>  </p>
+<hr>
+<h2 id="基础技能"><a href="#基础技能" class="headerlink" title="基础技能"></a>基础技能</h2><hr>
+<p><strong>&ensp;&ensp;&ensp;&ensp;说是基础，其实真的是基础，别看看起来真的很难的样子，再安卓逆向的世界里这都是要非常熟练的基础能力，我个人总结如下：</strong>  </p>
+<ul>
+<li><p><strong>熟练使用AndroidKiller、Jeb等工具</strong>  </p>
+</li>
+<li><p><strong>了解smali语言，能够将简单的sali语句翻译成java</strong>  </p>
+</li>
+<li><p><strong>能够使用AndroidStudio进行java层面的动态调试</strong>  </p>
+</li>
+<li><p><strong>了解arm汇编语言</strong>  </p>
+</li>
+<li><p><strong>从0到一编写一个so文件</strong>  </p>
+</li>
+<li><p><strong>能够配合ida对so成进行动态调试并简单了解ida的使用</strong>  </p>
+</li>
+<li><p><strong>配合so层的编写经验实现自己的反调试代码，并一一动手调试过掉这些反调试</strong></p>
+</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;我最开始学习这些的时候是大部分跟着52论坛的教我兄弟学逆向教程学的，时间大概两个月左右吧，但有些没有的，例如smali语法，我就去百度搜索和下载官方对应的指令表来学习，学完之后看懂一些简单的语法是没有问题了，还有arm汇编，这个建议去图书馆找本专业书来看，写得比较详细系统，至于其他的，要多动手实践。当然，看雪论坛等这些技术论坛有很多资料，没事就翻一翻，是能够发现惊喜的，有些东西不同时候看是完全不同的，当你在看到能够一下想到原理并知道他下一步要干什么的时候，基本这个知识点你差不多很熟练了，再这个知识点上你也能够被叫声大佬了!!!</strong>  </p>
+<hr>
+<h2 id="进阶技能"><a href="#进阶技能" class="headerlink" title="进阶技能"></a>进阶技能</h2><hr>
+<p><strong>&ensp;&ensp;&ensp;&ensp;在上面基础学完了之后，其实就可以做一些实践了，比如刷一下bugku、攻防世界的题啊，去百度一下一下破解教程，跟着大佬的博客学着破解啊，多练手练着练着就知道一般哪里是逆向的关键点了！！！</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;然后说起进阶技能吧，就是再基础上开始逆向精彩的地方–加固和脱壳之间的对抗，个人总结要学习、研究的知识点有如下：</strong>  </p>
+<ul>
+<li><p><strong>了解安卓apk包的架构，能解析apk的各种文件，例如dex、xml文件</strong>  </p>
+</li>
+<li><p><strong>了解动态加载的技术</strong>  </p>
+</li>
+<li><p><strong>学习安卓第一代壳(落地加载壳)的加固方案然后自己动手实现</strong>  </p>
+</li>
+<li><p><strong>学习frida的食用方法，会使用frida编写简单的脱壳机</strong>  </p>
+</li>
+<li><p><strong>有碎片时间可以阅读一下安卓源码</strong>  </p>
+</li>
+<li><p><strong>学习安卓第二代壳(不落地加载壳)的加固方案有条件就自己实现一下</strong>  </p>
+</li>
+<li><p><strong>针对第一代壳和第二代壳的加载点无论是使用动态调试还是hook的方法脱壳修复</strong>  </p>
+</li>
+<li><p><strong>了解第三代壳(函数抽取式壳)和第四代壳(vmp)的原理</strong>  </p>
+</li>
+<li><p><strong>学会使用或者自己编写针对第三代壳的脱壳机，例如:fart、frida-unpack等等</strong>  </p>
+</li>
+<li><p><strong>能自己解析so文件，也就是elf文件，这是后面so层加密加固的前提</strong>  </p>
+</li>
+<li><p><strong>有时间可以学习一下unicorn框架，u1s1，这框架是真的舒服，我记得github上已经有基于unicorn的so调用器，名字叫啥忘了</strong>  </p>
+</li>
+<li><p><strong>学习so层的一些加密加固方案</strong>  </p>
+</li>
+<li><p><strong>然后还要ollvm框架，不得不说,ollvm用来对抗ida的分析那滋味是真的酸爽，可以看一下无名侠大佬还有其他大佬写的利用unicorn进行反混淆的文章，是真的棒</strong></p>
+</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;上面这些是关于加固脱壳我的学习路程，因为个人水平有限，上面可能写的不是很好。我个人始终认为，不会自己写加固代码，就不会真正的脱壳，更不要说修复了，其实，大家写的加固方案加载dex点基本都差不多，你会写了，也知道了加载点再哪儿，脱壳点也就一清二楚了。其他的关于怎么学，可以买书也可以百度大佬们的博客，书我觉得姜维大佬的小黄书和非虫大佬的安卓逆向的书很好，其他的知识点就只有百度和去各大论坛去找资料了！！！</strong>  </p>
+<hr>
+<h2 id="其他技能"><a href="#其他技能" class="headerlink" title="其他技能"></a>其他技能</h2><hr>
+<p><strong>&ensp;&ensp;&ensp;&ensp;当然，除了上面这些跟安卓逆向一看就有直接联系的知识以外，还有很多看似和逆向没那么多的技能，这些看似不重要，但我觉得这些一点都不比加固脱壳的技术的重要性差，例如：</strong>  </p>
+<ul>
+<li><p><strong>谷歌百度搜索能力和日志分析，安卓逆向这东西你越学的深，遇见问题一般来说都没有现成的解决方案，有的话多半也是商业加密，基本在网上是搜不到的，多谷歌和进行日志分析可能找不到怎么解决，但能找到哪里出现问题，能找到哪里出现问题离解决问题就只有10%了。</strong>  </p>
+</li>
+<li><p><strong>流量抓取姿势，很多人一听流量抓取就以为这是web渗透做的事，其实不然，app是啥，就是个客户端，和浏览器没什么区别，有时候逆向的时候功能点很多找不到逆向点的时候完全可以靠定位流量锁定关键代码的，当然，在各大厂商日益重视流量安全的今天，抓取流量有时候比较麻烦了，例如，高版本的安卓已经不信任个人https证书，想通过https证书抓取流量在高版本有点行不通了，但是，还是可以通过xposed插件、vpn、更换低版本安卓、hook底层发包函数等方式抓取流量，方法很多，这里只是想说明流量很重要在需要联网的app的逆向过程中。</strong>  </p>
+</li>
+<li><p><strong>博客书写，写博客不是装逼，不是全写高端的，写博客的本质是总结帮助总结梳理自己的知识体系，写博客只能说仁者见仁智者见智吧！</strong></p>
+</li>
+</ul>
+<p><strong>&ensp;&ensp;&ensp;&ensp;上面写的只是一小部分，这里挑选的是我认为最重要的部分，总之，我觉得要学好安卓逆向，还需要耐得住寂寞，研究这东西真的需要坚持，覆盖的东西太多了！！！</strong>  </p>
+<hr>
+<h2 id="后序"><a href="#后序" class="headerlink" title="后序"></a>后序</h2><hr>
+<p><strong>&ensp;&ensp;&ensp;&ensp;其实还有很多想要写的，但是删了又加，删了又删，就成这样子了，可能写的不是很好，一边写一边回忆自己这一年走过来的艰辛，心绪不是很好，大致上写出来了我自己的学习路线。</strong>  </p>
+<p><strong>&ensp;&ensp;&ensp;&ensp;谨以此文总结自己入门安卓逆向的学习，也送给所有对安卓逆向感兴趣的朋友！！！</strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+              <a href="/tags/%E7%BB%8F%E9%AA%8C/" rel="tag"># 经验</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/16/41/" rel="prev" title="DEX文件解析--7、类及其类数据解析(完结篇)">
+      <i class="fa fa-chevron-left"></i> DEX文件解析--7、类及其类数据解析(完结篇)
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/09/09/43/" rel="next" title="安卓加固方案从落地加载到类指令抽取编写报告">
+      安卓加固方案从落地加载到类指令抽取编写报告 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%8A%80%E8%83%BD"><span class="nav-number">2.</span> <span class="nav-text">前置技能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E6%8A%80%E8%83%BD"><span class="nav-number">3.</span> <span class="nav-text">基础技能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%E6%8A%80%E8%83%BD"><span class="nav-number">4.</span> <span class="nav-text">进阶技能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E6%8A%80%E8%83%BD"><span class="nav-number">5.</span> <span class="nav-text">其他技能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%8E%E5%BA%8F"><span class="nav-number">6.</span> <span class="nav-text">后序</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

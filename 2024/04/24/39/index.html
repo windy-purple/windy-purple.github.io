@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"windy-purple.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)一、ebpf介绍   eBPF 是一项革命性的技术，起源于 Linux 内核，它可以在特权上下文中（如操作系统内核）运行沙盒程序。它用于安全有效地扩展内核的功能，而无需通过更改内核源代码或加载内核模块的方式来实现。（PS：介绍来源于https:&#x2F;&#x2F;ebpf.io&#x2F;zh-cn&#x2F;what-is-ebpf&#x2F;）    对比kernel h">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)">
+<meta property="og:url" content="https://windy-purple.github.io/2024/04/24/39/index.html">
+<meta property="og:site_name" content="windy_ll">
+<meta property="og:description" content="ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)一、ebpf介绍   eBPF 是一项革命性的技术，起源于 Linux 内核，它可以在特权上下文中（如操作系统内核）运行沙盒程序。它用于安全有效地扩展内核的功能，而无需通过更改内核源代码或加载内核模块的方式来实现。（PS：介绍来源于https:&#x2F;&#x2F;ebpf.io&#x2F;zh-cn&#x2F;what-is-ebpf&#x2F;）    对比kernel h">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/1.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/2.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/3.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/4.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/5.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/6.png">
+<meta property="article:published_time" content="2024-04-24T10:36:39.000Z">
+<meta property="article:modified_time" content="2024-11-12T15:21:32.664Z">
+<meta property="article:author" content="windy_ll">
+<meta property="article:tag" content="Android逆向">
+<meta property="article:tag" content="ebpf">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/1.png">
+
+<link rel="canonical" href="https://windy-purple.github.io/2024/04/24/39/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>ebpf在Android安全上的应用：ebpf的一些基础知识(上篇) | windy_ll</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">windy_ll</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://windy-purple.github.io/2024/04/24/39/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="windy_ll">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="windy_ll">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-04-24 18:36:39" itemprop="dateCreated datePublished" datetime="2024-04-24T18:36:39+08:00">2024-04-24</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-12 23:21:32" itemprop="dateModified" datetime="2024-11-12T23:21:32+08:00">2024-11-12</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>13 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="ebpf在Android安全上的应用：ebpf的一些基础知识-上篇"><a href="#ebpf在Android安全上的应用：ebpf的一些基础知识-上篇" class="headerlink" title="ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)"></a>ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)</h1><h2 id="一、ebpf介绍"><a href="#一、ebpf介绍" class="headerlink" title="一、ebpf介绍"></a>一、ebpf介绍</h2><p>   <strong>eBPF 是一项革命性的技术，起源于 Linux 内核，它可以在特权上下文中（如操作系统内核）运行沙盒程序。它用于安全有效地扩展内核的功能，而无需通过更改内核源代码或加载内核模块的方式来实现。（PS：介绍来源于<a target="_blank" rel="noopener" href="https://ebpf.io/zh-cn/what-is-ebpf/">https://ebpf.io/zh-cn/what-is-ebpf/</a>）</strong></p>
+<p>   <strong>对比kernel hook，ebpf最大的优点在于安全和可移植性，在ebpf载入之前，需要经过验证器的验证，能够保证内核不会因为ebpf程序而出现崩溃，可移植性体现在多版本支持，屏蔽掉了底层的细节，能最大程度保证开发者将重心放在程序的逻辑性上；同样的，ebpf最大的缺点也体现在了为了保证安全的验证器上，例如循环次数有限制等，导致一些明明可以很简洁的操作在ebpf中编程时必须要使用很蠢的方法间接实现（ps：对kernel hook感兴趣的可以参考一下我之前的一篇文章<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1672531-1-1.html">https://www.52pojie.cn/thread-1672531-1-1.html</a>）</strong></p>
+<hr>
+<h2 id="二、运行环境"><a href="#二、运行环境" class="headerlink" title="二、运行环境"></a>二、运行环境</h2><p>   <strong>OS：Android模拟器pixel 6 API level 33 x86_64</strong></p>
+<p>   <strong>kernel：5.15.41</strong></p>
+<hr>
+<h2 id="三、开发工具链"><a href="#三、开发工具链" class="headerlink" title="三、开发工具链"></a>三、开发工具链</h2><p>   <strong>ebpf常见的开发工具有如下一些：</strong></p>
+<ul>
+<li><p><code>bcc</code>：BCC 是一个框架，它允许用户编写 python 程序，并将 eBPF 程序嵌入其中。但是bcc想将bcc运行在android上时配置环境时相对麻烦，当然，环境配置好开发难度相比其他工具更低，同时，网上的资料相比其他工具也更多</p>
+</li>
+<li><p><code>libbpf</code>：libbpf 是一个基于 C 的库，包含一个 BPF 加载程序，该加载程序获取已编译的 BPF 目标文件并准备它们并将其加载到 Linux 内核中。 libbpf 承担了加载、验证 BPF 程序并将其附加到各种内核挂钩的繁重工作，使 BPF 应用程序开发人员能够只关注 BPF 程序的正确性和性能。官方链接：<a target="_blank" rel="noopener" href="https://github.com/libbpf/libbpf">https://github.com/libbpf/libbpf</a></p>
+</li>
+<li><p><code>cilium</code>：cilium是一个纯 Go 库，提供用于加载、编译和调试 eBPF 程序的实用程序。官方链接：<a target="_blank" rel="noopener" href="https://github.com/cilium/ebpf">https://github.com/cilium/ebpf</a></p>
+</li>
+<li><p><code>Android mk</code>：谷歌提供的android原生ebpf支撑，官方链接：<a target="_blank" rel="noopener" href="https://source.android.google.cn/docs/core/architecture/kernel/bpf?hl=zh-cn">https://source.android.google.cn/docs/core/architecture/kernel/bpf?hl=zh-cn</a></p>
+<p> <strong>本系列文章均选择使用<code>cilium</code>，经过对比，<code>bcc</code>配置环境过于麻烦，不方便快速移植到其他设备上；<code>libbpf</code>和<code>cilium</code>对比起来，在内核层代码都是<code>c</code>写的，区别不大，但是在用户层代码上，<code>go</code>还是比<code>c</code>更方便编写；至于使用<code>android mk</code>的方式，其实最开始选用的是该方案，毕竟是<code>Android</code>的原生支持，不论是在数据结构上面还是在函数上面支持度相比较前面几个工具都是最优选择，缺点就是占用资源过大，性能不好的机器编译时长不是一般的长</strong></p>
+</li>
+</ul>
+<hr>
+<h2 id="四、ebpf中的数据传输"><a href="#四、ebpf中的数据传输" class="headerlink" title="四、ebpf中的数据传输"></a>四、ebpf中的数据传输</h2><p>   <strong>ebpf中内核和用户层之间的数据传输常用的框架有两种，分别是<code>perf</code>和<code>ringbuffer</code>，前者是从<code>kernel module</code>而来的，而后者是专门为<code>ebpf</code>定制的，体验性更好，所有一般都使用后者</strong>  </p>
+<p>   <strong>在内核层，常规用法为首先使用<code>bpf_ringbuf_reserve</code>申请一个<code>buffer</code>，然后调用<code>bpf_ringbuf_submit</code>提交数据到缓冲区，更详细的可以参考文档<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/next/bpf/ringbuf.html">https://www.kernel.org/doc/html/next/bpf/ringbuf.html</a></strong></p>
+<hr>
+<h2 id="五、ebpf中的常见函数"><a href="#五、ebpf中的常见函数" class="headerlink" title="五、ebpf中的常见函数"></a>五、ebpf中的常见函数</h2><ul>
+<li><code>bpf_printk</code>: ebpf内核层打印函数，用法和<code>printf</code>一致，该函数输出到了<code>/sys/kernel/tracing/trace_pipe</code>文件中(PS:有些系统是&#x2F;sys&#x2F;kernel&#x2F;debug&#x2F;tracing&#x2F;trace_pipe)，值得注意的是，要开启打印，需要将<code>/sys/kernel/tracing/tracing_on</code>的值置为1</li>
+<li><code>bpf_probe_read_user_str</code>: 从用户空间读取字符串</li>
+<li><code>bpf_probe_read</code>: 从内核空间读取内存, 以上函数用法都可以参考<a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man7/bpf-helpers.7.html">https://man7.org/linux/man-pages/man7/bpf-helpers.7.html</a></li>
+</ul>
+<hr>
+<h2 id="六、vmlinux-h"><a href="#六、vmlinux-h" class="headerlink" title="六、vmlinux.h"></a>六、vmlinux.h</h2><p>   <strong><code>vmlinux.h</code>是啥？<code>vmlinux.h</code>是由工具生成而来的，包含了该机器内核所有的数据结构，有了这个头文件，就避免了我们去官网上查询相应的数据结构，还能避免不同版本之间带来的数据结构变动的问题</strong></p>
+<p>   <strong>通常我们使用<code>bpftool</code>去生成，命令为<code>bpftool btf dump file /sys/kernel/btf/vmlinux format c &gt; vmlinux.h</code></strong></p>
+<p>   <strong><code>bpftool</code>的<code>github</code>链接为<a target="_blank" rel="noopener" href="https://github.com/libbpf/bpftool">https://github.com/libbpf/bpftool</a></strong></p>
+<hr>
+<h2 id="七、ebpf常见的事件类型"><a href="#七、ebpf常见的事件类型" class="headerlink" title="七、ebpf常见的事件类型"></a>七、ebpf常见的事件类型</h2><h3 id="7-1-kprobe"><a href="#7-1-kprobe" class="headerlink" title="7.1 kprobe"></a>7.1 kprobe</h3><p>   <strong><code>kprobe</code>可以简单理解为在内核插桩，目前有两种形式，分别是<code>kprobe</code>和<code>kretprobe</code>，前者是在函数开始处插桩，后者则是在函数返回之前插桩，使用举例如下：</strong></p>
+<p><strong>内核层：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//go:build ignore</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;vmlinux.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">char</span> __license[] SEC(<span class="string">&quot;license&quot;</span>) = <span class="string">&quot;GPL&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">file_data</span> &#123;</span></span><br><span class="line">    u32 uid;</span><br><span class="line">    u8 filename[<span class="number">256</span>];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">event</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file_data</span> <span class="title">file</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    __uint(type,BPF_MAP_TYPE_RINGBUF);</span><br><span class="line">    __uint(max_entries,<span class="number">1</span> &lt;&lt; <span class="number">24</span>);</span><br><span class="line">&#125; events <span class="title function_">SEC</span><span class="params">(<span class="string">&quot;.maps&quot;</span>)</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">event</span> *<span class="title">unused</span> __<span class="title">attribute__</span>((<span class="title">unused</span>));</span></span><br><span class="line"></span><br><span class="line">SEC(<span class="string">&quot;kprobe/do_sys_openat2&quot;</span>)</span><br><span class="line"><span class="type">int</span> <span class="title function_">kprobe_openat</span><span class="params">(<span class="keyword">struct</span> pt_regs *ctx)</span></span><br><span class="line">&#123;</span><br><span class="line">    u32 uid;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">event</span> *<span class="title">openat2data</span>;</span></span><br><span class="line">    <span class="type">char</span> *fp = (<span class="type">char</span> *)(ctx-&gt;si);</span><br><span class="line">    </span><br><span class="line">    uid = bpf_get_current_uid_gid();</span><br><span class="line">        </span><br><span class="line">    openat2data = bpf_ringbuf_reserve(&amp;events,<span class="keyword">sizeof</span>(<span class="keyword">struct</span> event),<span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span>(!openat2data)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">long</span> res = bpf_probe_read_user_str(&amp;openat2data-&gt;file.filename,<span class="number">256</span>,fp);</span><br><span class="line">    bpf_printk(<span class="string">&quot;uid: %d, filename: %s&quot;</span>,uid,openat2data-&gt;file.filename);</span><br><span class="line">    openat2data-&gt;file.uid = uid;</span><br><span class="line">    bpf_ringbuf_submit(openat2data,<span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p><strong>用户层：</strong></p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">    <span class="string">&quot;log&quot;</span></span><br><span class="line">    <span class="string">&quot;os&quot;</span></span><br><span class="line">    <span class="string">&quot;os/signal&quot;</span></span><br><span class="line">    <span class="string">&quot;syscall&quot;</span></span><br><span class="line">    <span class="string">&quot;errors&quot;</span></span><br><span class="line">    <span class="string">&quot;bytes&quot;</span></span><br><span class="line">    <span class="string">&quot;encoding/binary&quot;</span></span><br><span class="line">    <span class="string">&quot;fmt&quot;</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">//&quot;github.com/cilium/ebpf&quot;</span></span><br><span class="line">    <span class="string">&quot;github.com/cilium/ebpf/link&quot;</span></span><br><span class="line">    <span class="string">&quot;github.com/cilium/ebpf/rlimit&quot;</span></span><br><span class="line">    <span class="string">&quot;github.com/cilium/ebpf/ringbuf&quot;</span></span><br><span class="line">    <span class="string">&quot;golang.org/x/sys/unix&quot;</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -tags &quot;linux&quot; -type event --target=amd64 bpf blog.c -- -I./headers</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    stopper := <span class="built_in">make</span>(<span class="keyword">chan</span> os.Signal,<span class="number">1</span>)</span><br><span class="line">    signal.Notify(stopper,os.Interrupt,syscall.SIGTERM)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> err := rlimit.RemoveMemlock(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatal(err);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    objs := bpfObjects&#123;&#125;</span><br><span class="line">    <span class="keyword">if</span> err := loadBpfObjects(&amp;objs,<span class="literal">nil</span>); err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatal(err);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> objs.Close()</span><br><span class="line">    </span><br><span class="line">    se, err := link.Kprobe(<span class="string">&quot;do_sys_openat2&quot;</span>,objs.KprobeOpenat,<span class="literal">nil</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatal(err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> se.Close()</span><br><span class="line">    </span><br><span class="line">    rd, err := ringbuf.NewReader(objs.Events)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatal(err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> rd.Close()</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">        &lt;-stopper</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> err := rd.Close(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">            log.Fatal(err)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;()</span><br><span class="line">    </span><br><span class="line">    log.Println(<span class="string">&quot;Waiting for Data&quot;</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">var</span> event bpfEvent</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> &#123;</span><br><span class="line">        record, err := rd.Read()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> errors.Is(err,ringbuf.ErrClosed) &#123;</span><br><span class="line">                log.Println(<span class="string">&quot;Received signal, exiting...&quot;</span>)</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">            &#125;</span><br><span class="line">            log.Fatal(err)</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> err := binary.Read(bytes.NewBuffer(record.RawSample),binary.LittleEndian,&amp;event); err != <span class="literal">nil</span> &#123;</span><br><span class="line">            log.Fatal(err)</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        &#125;</span><br><span class="line">        fmt.Printf(<span class="string">&quot;[%+v]: filename -&gt; %s\n&quot;</span>,event.File.Uid,unix.ByteSliceToString(event.File.Filename[:]))</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>编译：先<code>go generate</code>，然后<code>go build</code>即可</strong></p>
+<p><strong>效果图如下：</strong></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/1.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/2.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/3.png"></p>
+<p>   <strong>至于<code>kretprobe</code>，和<code>kprobe</code>区别不大，这里不在举例说明</strong></p>
+<h3 id="7-2-tracepoint"><a href="#7-2-tracepoint" class="headerlink" title="7.2 tracepoint"></a>7.2 tracepoint</h3><p>   <strong><code>tracepoint</code>可以理解为是在源码中预埋的hook点位，相比较<code>kprobe</code>，稳定性被大大增强，当然缺点也很明显，那就是数量有限，没办法自定义，查看所有<code>tracepoint</code>可在<code>/sys/kernel/tracing/events/</code>目录下找到所有可追踪的事件(PS: 有些机器可能是在<code>/sys/kernel/debug/tracing/events/</code>下)，事件的格式信息在相应的事件目录下的<code>format</code>文件中</strong></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/4.png"></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/5.png"></p>
+<p><strong>内核层：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">//go:build ignore</span><br><span class="line"></span><br><span class="line">#include &quot;vmlinux.h&quot;</span><br><span class="line"></span><br><span class="line">char __license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</span><br><span class="line"></span><br><span class="line">struct sys_enter_args &#123;</span><br><span class="line">   unsigned short common_type;</span><br><span class="line">   unsigned char common_flags;</span><br><span class="line">   unsigned char common_preempt_count;</span><br><span class="line">   int common_pid;</span><br><span class="line">   </span><br><span class="line">   long id;</span><br><span class="line">   unsigned long args[6];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">SEC(&quot;tracepoint/raw_syscalls/sys_enter&quot;)</span><br><span class="line">int trace_sys_enter(struct sys_enter_args *args)</span><br><span class="line">&#123;</span><br><span class="line">    u32 syscall_nr;</span><br><span class="line">    </span><br><span class="line">    syscall_nr = args-&gt;id;</span><br><span class="line">    </span><br><span class="line">    bpf_printk(&quot;syscall_nr: %d&quot;,syscall_nr);</span><br><span class="line">    </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>   <strong><code>bpf_printk</code>函数打印的结果在<code>/sys/kernel/tracing/trace_pipe</code>文件中(PS:有些机型在<code>/sys/kernel/debug/tracing/trace_pipe</code>文件中，下同，下面的不在重复解释)，观看<code>bpf_printk</code>函数结果需要先将<code>/sys/kernel/tracing/tracing_on</code>文件中的值置为<code>1</code></strong></p>
+<p><strong>用户层：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;log&quot;</span><br><span class="line">	&quot;time&quot;</span><br><span class="line"></span><br><span class="line">	&quot;github.com/cilium/ebpf/link&quot;</span><br><span class="line">	&quot;github.com/cilium/ebpf/rlimit&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">//go:generate go run github.com/cilium/ebpf/cmd/bpf2go --target=amd64 bpf blog.c -- -I./headers</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line"></span><br><span class="line">	if err := rlimit.RemoveMemlock(); err != nil &#123;</span><br><span class="line">		log.Fatal(err)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	objs := bpfObjects&#123;&#125;</span><br><span class="line">	if err := loadBpfObjects(&amp;objs, nil); err != nil &#123;</span><br><span class="line">		log.Fatalf(&quot;loading objects: %v&quot;, err)</span><br><span class="line">	&#125;</span><br><span class="line">	defer objs.Close()</span><br><span class="line"></span><br><span class="line">	kp, err := link.Tracepoint(&quot;raw_syscalls&quot;,&quot;sys_enter&quot;,objs.TraceSysEnter,nil)</span><br><span class="line">        if err != nil &#123;</span><br><span class="line">            log.Fatal(err)</span><br><span class="line">        &#125;</span><br><span class="line">        defer kp.Close()</span><br><span class="line"></span><br><span class="line">	ticker := time.NewTicker(1 * time.Minute)</span><br><span class="line">	defer ticker.Stop()</span><br><span class="line"></span><br><span class="line">	log.Println(&quot;Waiting for events..&quot;)</span><br><span class="line"></span><br><span class="line">	for range ticker.C &#123;</span><br><span class="line">	    log.Printf(&quot;get rule\n&quot;)</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>效果图如下：</strong></p>
+<p><img src="https://raw.githubusercontent.com/windy-purple/blog_picture_bed/refs/heads/main/ebpf1/6.png"></p>
+<h3 id="7-3-其他事件类型"><a href="#7-3-其他事件类型" class="headerlink" title="7.3 其他事件类型"></a>7.3 其他事件类型</h3><p>   <strong><code>ebpf</code>还有其他事件类型，例如<code>socket</code>、<code>sockops</code>、<code>tc</code>、<code>xdp</code>等等，但这些更多与流量控制息息相关，跟我们在移动安全上的关联性不是很大，这里不在举例说明，当然还有<code>uprobe</code>事件类型，这个是用户层插桩的，但用户层插桩更推荐<code>frida</code>这些框架，而且<code>uprobe</code>在<code>linux</code>使用体验感还好，在<code>Android</code>端使用去插桩<code>APP</code>过于麻烦了。</strong></p>
+<hr>
+<h2 id="八、一些使用技巧"><a href="#八、一些使用技巧" class="headerlink" title="八、一些使用技巧"></a>八、一些使用技巧</h2><h3 id="8-1-将数据从用户空间传输到内核空间"><a href="#8-1-将数据从用户空间传输到内核空间" class="headerlink" title="8.1 将数据从用户空间传输到内核空间"></a>8.1 将数据从用户空间传输到内核空间</h3><p>   <strong>在<code>cilium</code>中，<code>ringbuffer</code>并不支持将数据从用户空间传递到内核空间，只支持将数据从内核空间发送到用户空间，在新的数据传输框架<code>BPF_MAP_TYPE_USER_RINGBUF</code>支持将数据从用户空间传输到内核空间，但是遗憾的是，<code>cilium</code>暂不支持该框架</strong></p>
+<p>   <strong>在我们需要传输一些过滤条件或者动态的全局配置到内核层去过滤的时候需要怎么做喃？可以考虑监控特定的文件名、特定的命令等来获取数据，当然这种方式仅时候传递数据量不大的情况</strong></p>
+<h3 id="8-2-获取UID"><a href="#8-2-获取UID" class="headerlink" title="8.2 获取UID"></a>8.2 获取UID</h3><p>   <strong>UID是啥，UID是android中uid用于标识一个应用程序，uid在应用安装时被分配，并且在应用存在于手机上期间，都不会改变，可以理解为app的唯一身份标识，在ebpf中，可以用来过滤指定app的数据</strong></p>
+<p>   <strong><code>ebpf</code>可以使用<code>bpf_get_current_uid_gid</code>函数来获取UID，该函数返回值为<code>u32</code>类型</strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android%E9%80%86%E5%90%91/" rel="tag"># Android逆向</a>
+              <a href="/tags/ebpf/" rel="tag"># ebpf</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/08/08/15/" rel="prev" title="编写一个简单的linux kernel rootkit">
+      <i class="fa fa-chevron-left"></i> 编写一个简单的linux kernel rootkit
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/04/24/19/" rel="next" title="ebpf在Android安全上的应用：结合binder完成一个行为检测沙箱(下篇)">
+      ebpf在Android安全上的应用：结合binder完成一个行为检测沙箱(下篇) <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ebpf%E5%9C%A8Android%E5%AE%89%E5%85%A8%E4%B8%8A%E7%9A%84%E5%BA%94%E7%94%A8%EF%BC%9Aebpf%E7%9A%84%E4%B8%80%E4%BA%9B%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86-%E4%B8%8A%E7%AF%87"><span class="nav-number">1.</span> <span class="nav-text">ebpf在Android安全上的应用：ebpf的一些基础知识(上篇)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81ebpf%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.1.</span> <span class="nav-text">一、ebpf介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83"><span class="nav-number">1.2.</span> <span class="nav-text">二、运行环境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%BC%80%E5%8F%91%E5%B7%A5%E5%85%B7%E9%93%BE"><span class="nav-number">1.3.</span> <span class="nav-text">三、开发工具链</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81ebpf%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93"><span class="nav-number">1.4.</span> <span class="nav-text">四、ebpf中的数据传输</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81ebpf%E4%B8%AD%E7%9A%84%E5%B8%B8%E8%A7%81%E5%87%BD%E6%95%B0"><span class="nav-number">1.5.</span> <span class="nav-text">五、ebpf中的常见函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81vmlinux-h"><span class="nav-number">1.6.</span> <span class="nav-text">六、vmlinux.h</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81ebpf%E5%B8%B8%E8%A7%81%E7%9A%84%E4%BA%8B%E4%BB%B6%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.7.</span> <span class="nav-text">七、ebpf常见的事件类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-kprobe"><span class="nav-number">1.7.1.</span> <span class="nav-text">7.1 kprobe</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-tracepoint"><span class="nav-number">1.7.2.</span> <span class="nav-text">7.2 tracepoint</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E5%85%B6%E4%BB%96%E4%BA%8B%E4%BB%B6%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.7.3.</span> <span class="nav-text">7.3 其他事件类型</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%B8%80%E4%BA%9B%E4%BD%BF%E7%94%A8%E6%8A%80%E5%B7%A7"><span class="nav-number">1.8.</span> <span class="nav-text">八、一些使用技巧</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-1-%E5%B0%86%E6%95%B0%E6%8D%AE%E4%BB%8E%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E4%BC%A0%E8%BE%93%E5%88%B0%E5%86%85%E6%A0%B8%E7%A9%BA%E9%97%B4"><span class="nav-number">1.8.1.</span> <span class="nav-text">8.1 将数据从用户空间传输到内核空间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-%E8%8E%B7%E5%8F%96UID"><span class="nav-number">1.8.2.</span> <span class="nav-text">8.2 获取UID</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">windy_ll</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">windy_ll</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">144k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:23</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
